@@ -56,6 +56,21 @@ The first time, Google says **"Google hasn't verified this app"**. That's expect
 
 ---
 
+## Part 5 (optional): Google Calendar and Apple Calendar
+
+1. In **console.cloud.google.com**, with the **Sadhana** project selected, search for **Google Calendar API** and click **Enable**.
+2. Under **Google Auth Platform > Data access > Add or remove scopes**, tick these three, then **Update** and **Save**:
+   - `.../auth/calendar.app.created` (make its own calendar and manage events on it)
+   - `.../auth/calendar.calendarlist.readonly` (see the list of her calendars)
+   - `.../auth/calendar.events.readonly` (read her events so they show in Sadhana)
+3. In Sadhana, go to **Settings > Calendar > Connect Google Calendar**, and tick the calendar boxes on Google's screen. Do this once on each device.
+4. To see it in Apple Calendar:
+   - **Mac:** System Settings > Internet Accounts > Add Account > Google, then turn on **Calendars**.
+   - **iPhone:** Settings > Apps > Calendar > Calendar Accounts > Add Account > Google.
+   A calendar called **Sadhana** appears with her events, birthdays, seva, trips and date nights. Change its colour in Apple Calendar if she likes.
+
+---
+
 ## Day to day
 
 - The status at the bottom of the sidebar (on iPhone, the small pill at the bottom right) shows **Synced**, **Syncing…** or **Offline: saved on this device**.

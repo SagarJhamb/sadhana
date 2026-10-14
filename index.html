@@ -315,6 +315,8 @@ tbody tr.nohover:hover td{background:none}
   h1{font-size:1.7rem}
 }
 .syncpill{display:none}
+.card label.cb{display:flex;align-items:center;gap:10px}
+.cal .ev.x{background:transparent;border:1px dashed var(--line);color:var(--muted);cursor:default}
 .signin{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--sage-soft);border:1px solid var(--line);border-radius:16px;padding:14px 18px;margin-bottom:18px}
 .signin p{margin:0;color:var(--ink)}
 .gbtn{display:inline-flex;align-items:center;gap:8px}
@@ -445,6 +447,8 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const G={token:null,exp:0,fileId:null,version:null,base:null,rev:0,syncedRev:0,syncing:false,again:false,pendingFiles:[],status:'',remoteWaiting:null};
 const SCOPE='https://www.googleapis.com/auth/drive.appdata';
+const CAL_SCOPES=['https://www.googleapis.com/auth/calendar.app.created','https://www.googleapis.com/auth/calendar.calendarlist.readonly','https://www.googleapis.com/auth/calendar.events.readonly'];
+const wantCal=()=>!!(db&&db.settings&&db.settings.gcal);
 const DRIVE='https://www.googleapis.com/drive/v3',UPLOAD='https://www.googleapis.com/upload/drive/v3',DATA='sadhana.json';
 const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
 const ss={get(k){try{return sessionStorage.getItem(k)}catch(e){return null}},set(k,v){try{sessionStorage.setItem(k,v)}catch(e){}}};
@@ -454,26 +458,31 @@ const tokenOk=()=>!!G.token&&Date.now()<G.exp;
 const configured=()=>!!(CFG.googleClientId&&!/PASTE/.test(CFG.googleClientId));
 
 /* sign-in: a plain redirect to Google and back, which works inside an iPhone home-screen app */
-function signIn(silent){
+function signIn(silent,consent,withCal){
  if(!configured()){toast('Add your Google client ID to config.js first');return}
  const state=uid()+uid();ss.set('sadhana.state',state);if(silent)ss.set('sadhana.silentAt',String(Date.now()));
- persist().then(()=>{const p=new URLSearchParams({client_id:CFG.googleClientId,redirect_uri:appUrl(),response_type:'token',scope:SCOPE,include_granted_scopes:'true',state,prompt:silent?'none':'select_account'});
+ persist().then(()=>{const p=new URLSearchParams({client_id:CFG.googleClientId,redirect_uri:appUrl(),response_type:'token',scope:[SCOPE,...((withCal||wantCal())?CAL_SCOPES:[])].join(' '),include_granted_scopes:'true',state,prompt:silent?'none':(consent?'consent':'select_account')});
   location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p})}
 function takeToken(){
  const h=new URLSearchParams(location.hash.slice(1));if(!h.get('access_token')&&!h.get('error'))return null;
  history.replaceState(null,'',appUrl());
  if(h.get('state')!==ss.get('sadhana.state'))return 'bad_state';
  if(h.get('error'))return h.get('error');
- G.token=h.get('access_token');G.exp=Date.now()+((+h.get('expires_in')||3600)-120)*1000;
- ls.set('sadhana.token',JSON.stringify({t:G.token,e:G.exp}));ls.set('sadhana.signedIn','1');return 'ok'}
-function loadToken(){try{const j=JSON.parse(ls.get('sadhana.token')||'null');if(j&&j.e>Date.now()){G.token=j.t;G.exp=j.e}}catch(e){}}
+ if(h.get('scope')&&!h.get('scope').split(' ').includes(SCOPE)){G.problem='scope';return 'scope'}
+ G.problem=null;G.scopes=h.get('scope')||'';G.token=h.get('access_token');G.exp=Date.now()+((+h.get('expires_in')||3600)-120)*1000;
+ ls.set('sadhana.token',JSON.stringify({t:G.token,e:G.exp,s:G.scopes}));ls.set('sadhana.signedIn','1');return 'ok'}
+function loadToken(){try{const j=JSON.parse(ls.get('sadhana.token')||'null');if(j&&j.e>Date.now()){G.token=j.t;G.exp=j.e;G.scopes=j.s||''}}catch(e){}}
 function signOut(){G.token=null;G.exp=0;ls.del('sadhana.token');ls.del('sadhana.signedIn')}
 
 async function api(url,opt={}){
  if(!tokenOk())throw {code:'auth'};
  let r;try{r=await fetch(url,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+G.token}})}catch(e){throw {code:'offline'}}
  if(r.status===401){G.token=null;ls.del('sadhana.token');throw {code:'auth'}}
- if(r.status===403||r.status===429){throw {code:'busy',status:r.status}}
+ if(r.status===403||r.status===429){let reason='';try{const j=await r.json();const er=j.error||{};reason=[(er.errors||[]).map(x=>x.reason).join(' '),(er.details||[]).map(d=>d.reason||'').join(' '),er.status||'',er.message||''].join(' ')}catch(e){}
+  console.warn('Google Drive refused the request:',r.status,reason);
+  if(/accessNotConfigured|SERVICE_DISABLED|has not been used|is disabled/i.test(reason))throw {code:'api_off'};
+  if(/insufficient|SCOPE|PERMISSION_DENIED/i.test(reason))throw {code:'scope'};
+  throw {code:'busy',status:r.status}}
  if(!r.ok)throw {code:'http',status:r.status};
  return r}
 async function findFile(name){const q=encodeURIComponent(`name='${name}' and trashed=false`);const j=await (await api(`${DRIVE}/files?spaces=appDataFolder&q=${q}&fields=files(id,version)&pageSize=10`)).json();return (j.files||[])[0]||null}
@@ -505,6 +514,8 @@ function merge(b,l,r){return mergeVal(b||{},l,r,0)}
 async function persist(){await local.put('kv','state',{db:clone(db),base:G.base,fileId:G.fileId,version:G.version,rev:G.rev,syncedRev:G.syncedRev,pendingFiles:G.pendingFiles})}
 function setStatus(t){G.status=t;for(const id of ['savestate','syncpill']){const el=document.getElementById(id);if(el)el.textContent=t}const n=document.getElementById('syncnote');if(n)n.innerHTML=syncNote()}
 function syncNote(){
+ if(G.problem==='api_off')return '<b>Sync is blocked:</b> the Google Drive API is switched off for this app\'s Google Cloud project. In Google Cloud, select the project that holds this app\'s Client ID, search for <b>Google Drive API</b> and click <b>Enable</b>. Wait a few minutes, then tap <b>Sync now</b>.';
+ if(G.problem==='scope')return '<b>Sync is blocked:</b> Google Drive access was not allowed when signing in. Tap <b>Allow Drive access</b> and make sure the Google Drive box is ticked on Google\'s screen.';
  if(!configured())return 'Sync is not set up yet: add your Google client ID to <b>config.js</b>. Until then, everything is saved on this device only.';
  if(tokenOk()||ls.get('sadhana.signedIn'))return 'Everything is saved on this device and synced to a hidden folder in your Google Drive, so the same planner opens on your Mac and iPhone. Only this app can see that folder.';
  return 'Not signed in, so changes are only saved on this device. Sign in with Google to sync between your Mac and iPhone.'}
@@ -534,10 +545,11 @@ async function sync(){
    const rev=G.rev,snap=JSON.stringify(db);
    const res=G.fileId?await updateFile(G.fileId,snap,'application/json'):await createFile(DATA,snap,'application/json');
    G.fileId=res.id;G.version=res.version;G.base=JSON.parse(snap);G.syncedRev=rev}
-  await persist();setStatus(dirty()?'Syncing…':'Synced')
+  await persist();setStatus(dirty()?'Syncing…':'Synced');calSoon()
  }catch(e){
-  setStatus(e.code==='offline'?'Offline: saved on this device':e.code==='auth'?'Tap to reconnect':e.code==='busy'?'Google is busy: will retry':'Not synced yet: will retry');
-  if(e.code!=='auth')setTimeout(()=>{if(dirty())sync()},20000)}
+  G.problem=e.code==='api_off'||e.code==='scope'?e.code:null;
+  setStatus(e.code==='offline'?'Offline: saved on this device':e.code==='auth'?'Tap to reconnect':e.code==='api_off'?'Drive API is off: see Settings':e.code==='scope'?'Tap to allow Drive access':e.code==='busy'?'Google is busy: will retry':'Not synced yet: will retry');
+  if(e.code!=='auth'&&e.code!=='api_off'&&e.code!=='scope')setTimeout(()=>{if(dirty())sync()},20000)}
  G.syncing=false;if(G.again){G.again=false;sync()}}
 
 /* photos and files */
@@ -573,6 +585,102 @@ async function boot(){
  setInterval(()=>{if(document.visibilityState==='visible'){if(G.remoteWaiting&&!busy())refreshView();sync()}},60000);
  setInterval(()=>{if(G.remoteWaiting&&!busy())refreshView()},3000);
  return {fresh,tk}}
+
+/* ---------- Google Calendar: a "Sadhana" calendar she can see in Apple Calendar, plus her own events shown here ----------
+   - Writes: events, birthdays (yearly), seva due dates, trips and planned dates go into one calendar called "Sadhana".
+     Each item always gets the same event id, so two devices never create duplicates, and removed items are deleted.
+   - Reads: events from the Google calendars she picks, shown on Home, the day plan and the month calendar.
+   - Permissions are only requested once she taps "Connect Google Calendar" in Settings. */
+const CAL='https://www.googleapis.com/calendar/v3';
+const calGranted=()=>tokenOk()&&(G.scopes||'').includes('calendar.app.created');
+const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('calendar.events.readonly')&&(G.scopes||'').includes('calendar.calendarlist.readonly');
+const C={calId:null,list:null,busy:false,again:false,timer:null,last:0,ext:{},extAt:{},loading:{},error:null,pushed:0};
+const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London'}catch(e){return 'Europe/London'}})();
+const calDefaults=()=>({events:true,birthdays:true,seva:true,trips:true,dates:true,todos:false});
+const calWhat=()=>({...calDefaults(),...(db.settings.gcalWhat||{})});
+const hexId=s=>'sd'+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,'0')).join('');
+const strHash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
+const dayAfter=d=>addDays(d,1);
+async function calApi(path,opt={}){const body=opt.json!==undefined?JSON.stringify(opt.json):undefined;
+ const r=await api(CAL+path,{method:opt.method||'GET',headers:body?{'Content-Type':'application/json'}:{},body});
+ return r.status===204?null:r.json()}
+
+function wanted(){const w=calWhat(),out={};const tz=TZ;
+ const allDay=(start,end,summary,extra={})=>({summary,start:{date:start},end:{date:end||dayAfter(start)},transparency:'transparent',...extra});
+ if(w.events)for(const e of db.events||[]){if(!e.date||!e.title)continue;
+  let body;if(e.time&&/^\d{1,2}:\d{2}$/.test(e.time)){const [h,m]=e.time.split(':').map(Number);const st=`${e.date}T${pad(h)}:${pad(m)}:00`;const en=new Date(parse(e.date).getTime()+((h*60+m+60)*60000));
+   body={summary:e.title,start:{dateTime:st,timeZone:tz},end:{dateTime:`${iso(en)}T${pad(en.getHours())}:${pad(en.getMinutes())}:00`,timeZone:tz}}}
+  else body=allDay(e.date,null,e.title);
+  if(e.location)body.location=e.location;if(e.notes)body.description=e.notes;out['ev:'+e.id]=body}
+ if(w.birthdays)for(const b of db.birthdays||[]){if(!b.date||!b.name)continue;out['bd:'+b.id]=allDay(b.date,null,`🎂 ${b.name}'s birthday`,{recurrence:['RRULE:FREQ=YEARLY'],description:b.gift?`Gift ideas: ${b.gift}`:''})}
+ if(w.seva)for(const s of db.seva||[]){if(!s.due||s.done||!s.title)continue;out['sv:'+s.id]=allDay(s.due,null,`🪷 ${s.kind==='Call'?'Seva call':'Seva'}: ${s.title}`,{description:[s.person,s.phone,s.notes].filter(Boolean).join('\n')})}
+ if(w.trips)for(const t of db.trips||[]){if(!t.start||!t.destination)continue;out['tr:'+t.id]=allDay(t.start,dayAfter(t.end&&t.end>=t.start?t.end:t.start),`✈️ ${t.destination}`,{description:t.stay||''})}
+ if(w.dates)for(const d of db.dates||[]){if(!d.date||!d.idea||d.status==='Idea')continue;out['dt:'+d.id]=allDay(d.date,null,`💛 ${d.idea}`,{description:d.notes||''})}
+ if(w.todos)for(const t of db.todos||[]){if(!t.due||t.done||!t.title)continue;out['td:'+t.id]=allDay(t.due,null,`☑️ Due: ${t.title}`)}
+ for(const k in out){const b=out[k];b.status='confirmed';const h=strHash(JSON.stringify(b));b.extendedProperties={private:{sadhana:'1',h}}}
+ return out}
+
+async function findOrMakeCal(){
+ if(C.calId)return C.calId;
+ let page=null,found=null;do{const j=await calApi('/users/me/calendarList?minAccessRole=owner&maxResults=250'+(page?'&pageToken='+page:''));found=(j.items||[]).find(c=>c.summary==='Sadhana'&&c.description==='Planner events from Sadhana');page=j.nextPageToken}while(!found&&page);
+ if(!found)found=await calApi('/calendars',{method:'POST',json:{summary:'Sadhana',description:'Planner events from Sadhana',timeZone:TZ}});
+ C.calId=found.id;return C.calId}
+
+async function pushCalendar(){
+ const cal=await findOrMakeCal();const want=wanted();const have={};
+ let page=null;do{const j=await calApi(`/calendars/${encodeURIComponent(cal)}/events?maxResults=2500&showDeleted=false&fields=items(id,extendedProperties),nextPageToken`+(page?'&pageToken='+page:''));for(const ev of j.items||[])have[ev.id]=((ev.extendedProperties||{}).private||{}).h||'';page=j.nextPageToken}while(page);
+ const base=`/calendars/${encodeURIComponent(cal)}/events`;let n=0;
+ for(const k in want){const id=hexId(k),body={...want[k],id};
+  if(!(id in have)){try{await calApi(base,{method:'POST',json:body})}catch(e){if(e.code==='http'&&e.status===409)await calApi(`${base}/${id}`,{method:'PUT',json:body});else throw e}n++}
+  else if(have[id]!==body.extendedProperties.private.h){await calApi(`${base}/${id}`,{method:'PUT',json:body});n++}}
+ for(const id in have){if(id.startsWith('sd')&&!Object.keys(want).some(k=>hexId(k)===id)){try{await calApi(`${base}/${id}`,{method:'DELETE'})}catch(e){if(!(e.code==='http'&&(e.status===404||e.status===410)))throw e}n++}}
+ C.pushed=n;return n}
+
+/* her own calendars */
+async function calList(){if(C.list)return C.list;const j=await calApi('/users/me/calendarList?maxResults=250');C.list=(j.items||[]).filter(c=>c.summary!=='Sadhana'||c.description!=='Planner events from Sadhana').map(c=>({id:c.id,name:c.summaryOverride||c.summary,primary:!!c.primary,color:c.backgroundColor}));return C.list}
+const showCals=()=>db.settings.gcalShow||['primary'];
+async function loadMonth(ym){
+ if(!calCanRead()||C.loading[ym])return;if(C.extAt[ym]&&Date.now()-C.extAt[ym]<10*60000)return;
+ C.loading[ym]=true;
+ try{const lst=await calList();const ids=showCals().map(id=>id==='primary'?(lst.find(c=>c.primary)||{}).id||'primary':id);
+  const tMin=new Date(parse(ym+'-01').getTime()-86400000).toISOString(),tMax=new Date(parse(addMonths(ym,1)+'-01').getTime()+86400000).toISOString();
+  const out=[];
+  for(const id of [...new Set(ids)]){const meta=lst.find(c=>c.id===id)||{name:'Calendar'};
+   const j=await calApi(`/calendars/${encodeURIComponent(id)}/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${encodeURIComponent(tMin)}&timeMax=${encodeURIComponent(tMax)}&fields=items(summary,start,end,location,status)`);
+   for(const ev of j.items||[]){if(ev.status==='cancelled')continue;
+    if(ev.start.date){let d=ev.start.date;while(d<ev.end.date){out.push({date:d,title:ev.summary||'(busy)',time:'',cal:meta.name,color:meta.color});d=addDays(d,1)}}
+    else{const s=new Date(ev.start.dateTime);out.push({date:iso(s),time:`${pad(s.getHours())}:${pad(s.getMinutes())}`,title:ev.summary||'(busy)',cal:meta.name,color:meta.color,loc:ev.location||''})}}}
+  C.ext[ym]=out;C.extAt[ym]=Date.now();C.error=null}
+ catch(e){C.error=e.code==='scope'?'scope':'load';C.extAt[ym]=Date.now()}
+ C.loading[ym]=false;refreshView()}
+function extOn(d){const ym=d.slice(0,7);if(!calCanRead()||!db.settings.gcal)return [];if(!C.ext[ym]&&!C.loading[ym]&&!(C.extAt[ym]&&Date.now()-C.extAt[ym]<60000))setTimeout(()=>loadMonth(ym),0);return (C.ext[ym]||[]).filter(e=>e.date===d).sort((a,b)=>(a.time||'00')<(b.time||'00')?-1:1)}
+
+/* scheduling */
+function calSoon(){if(!db.settings.gcal||!calGranted())return;clearTimeout(C.timer);C.timer=setTimeout(runCal,Date.now()-C.last<20000?20000:1500)}
+async function runCal(){if(C.busy){C.again=true;return}if(!db.settings.gcal||!calGranted())return;
+ C.busy=true;C.last=Date.now();
+ try{await pushCalendar();C.error=null;for(const k in C.extAt)C.extAt[k]=0}
+ catch(e){C.error=e.code==='scope'?'scope':e.code==='api_off'?'api_off':'push';console.warn('Calendar sync failed',e)}
+ C.busy=false;if(C.again){C.again=false;calSoon()}
+ const n=document.getElementById('calnote');if(n)n.innerHTML=calNote()}
+function calNote(){
+ if(!db.settings.gcal)return 'Add your events, birthdays, seva, trips and date plans to a <b>Sadhana</b> calendar in Google Calendar, and see your Google calendar here. Add your Google account to Apple Calendar once and it all shows up there too, on your Mac and iPhone.';
+ if(!tokenOk())return 'Sign in to sync your calendar.';
+ if(!calGranted())return 'Calendar is switched on, but not yet allowed on this device. Tap <b>Allow calendar access</b> and make sure the calendar boxes are ticked on Google\'s screen.';
+ if(C.error==='api_off')return '<b>Calendar sync is blocked:</b> turn on the <b>Google Calendar API</b> in the same Google Cloud project as this app, wait a few minutes, then tap <b>Sync calendar now</b>.';
+ if(C.error==='push')return 'The last calendar update did not finish. It will try again; you can also tap <b>Sync calendar now</b>.';
+ return 'Connected. Your planner dates go into the <b>Sadhana</b> calendar in Google Calendar'+(calCanRead()?', and events from the calendars ticked below show up here.':'.')}
+function calCard(){const w=calWhat(),on=!!db.settings.gcal;
+ const box=(k,l)=>`<label class="cb"><input type="checkbox" class="check" data-act="calWhat" data-k="${k}" ${w[k]?'checked':''}>${l}</label>`;
+ let lists='';if(on&&calCanRead()){if(C.list){lists=`<div class="rule"></div><p class="small muted">Show events from:</p><div class="stack" style="gap:6px">${C.list.map(c=>`<label class="cb"><input type="checkbox" class="check" data-act="calShow" data-id="${esc(c.primary?'primary':c.id)}" ${showCals().includes(c.primary?'primary':c.id)?'checked':''}><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${esc(c.color||'var(--sage)')}"></i>${esc(c.name)}${c.primary?' (main)':''}</label>`).join('')}</div>`}else{setTimeout(()=>calList().then(()=>refreshView()).catch(()=>{}),0)}}
+ return `<section class="card stack" style="gap:14px"><h3>Calendar</h3><p class="muted" id="calnote">${calNote()}</p>
+  ${!on?`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Connect Google Calendar</button></div>`
+  :`${calGranted()?'':`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Allow calendar access</button></div>`}
+   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('todos','To-do due dates')}</div>
+   ${lists}
+   <div class="row"><button class="btn" data-act="calNow">Sync calendar now</button><button class="btn ghost" data-act="calOff">Disconnect</button></div>
+   <details class="small muted"><summary style="cursor:pointer">See it in Apple Calendar</summary><p style="margin-top:8px"><b>Mac:</b> System Settings &gt; Internet Accounts &gt; Add Account &gt; Google, sign in, and turn on Calendars. <b>iPhone:</b> Settings &gt; Apps &gt; Calendar &gt; Calendar Accounts &gt; Add Account &gt; Google. The Sadhana calendar then appears in Apple Calendar with your others; you can change its colour there.</p></details>`}
+ </section>`}
 
 /* ---------- seed (clearly marked examples) ---------- */
 function seed(){
@@ -730,11 +838,13 @@ function vHome(){
      ${projDue.map(p=>it(`${esc(p.name)} (project) is due`,'r')).join('')}
      ${it(`${habPending} daily habit${habPending===1?'':'s'} pending`,'g')}
      ${evToday.map(e=>it(`${esc(e.title)}${e.time?' at '+e.time:''}`,'g')).join('')}
+     ${extOn(t).map(e=>it(`📅 ${esc(e.title)}${e.time?' at '+e.time:''}`,'g')).join('')}
      ${bdays.filter(b=>b.next===t).map(b=>it(`It's ${esc(b.name)}'s birthday`,'r')).join('')}
      ${sevaDue?it(`${sevaDue} seva item${sevaDue===1?'':'s'} due`):''}
      <div class="sec">Next 7 days</div>
      ${it(`${L.soon.length} task${L.soon.length===1?'':'s'} upcoming`)}
      ${ev7.map(e=>it(`${esc(e.title)}, ${fShort(e.date)}`,'g')).join('')}
+     ${[1,2,3,4,5,6,7].flatMap(i=>extOn(addDays(t,i))).slice(0,8).map(e=>it(`📅 ${esc(e.title)}, ${fShort(e.date)}${e.time?' '+e.time:''}`,'g')).join('')}
      ${bdays.filter(b=>b.next!==t).map(b=>it(`${esc(b.name)}'s birthday, ${fShort(b.next)}`,'r')).join('')}
      ${aged?it(`${aged} fee note${aged===1?'':'s'} over 90 days unpaid`,'r'):''}
     </div>
@@ -773,6 +883,7 @@ function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
  <div class="spread">
   <div class="pg">
    <div class="row" style="justify-content:space-between"><span class="band">Date · ${fFull(d)}</span></div>
+   ${(()=>{const xs=extOn(d);return xs.length?`<div><span class="band">From your calendar</span><div class="stack" style="gap:4px;margin-top:6px">${xs.map(e=>`<div class="small"><b class="num">${e.time?hLabel(e.time):'All day'}</b> · ${esc(e.title)}</div>`).join('')}</div></div>`:''})()}
    <div><span class="band">Schedule</span><div class="lines" style="margin-top:6px">${hours.map(h=>`<div class="ln"><span class="h">${hLabel(h)}</span><input class="hand" id="s${h}" data-bind="${P}.schedule.${h}" value="${esc(x.schedule[h]||'')}" aria-label="${hLabel(h)}"></div>`).join('')}</div></div>
    <div><span class="band">Quick to-dos</span><div class="lines" style="margin-top:6px">${x.quick.map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.quick.${i}.done" ${q.done?'checked':''} aria-label="Done" style="margin-bottom:7px"><input class="hand" id="q${i}" data-bind="${P}.quick.${i}.t" value="${esc(q.t)}" ${q.done?'style="text-decoration:line-through;opacity:.6"':''}></div>`).join('')}</div></div>
   </div>
@@ -925,7 +1036,7 @@ function fInv(){const t=today();const inv=db.invoices.map(i=>({...i,status:(i.st
 function vOrg(){const s=S.sub.org;
  return head('Organisation','Calendar, birthdays, outfits, trips, restaurants and date nights.')+tabs('org',[['calendar','Event calendar'],['birthdays','Birthdays'],['outfits','Outfit planner'],['travel','Travel'],['restaurants','Restaurants'],['dates','Date planner']])+({calendar:oCal,birthdays:oBday,outfits:oOutfits,travel:oTravel,restaurants:oRest,dates:oDates}[s])()}
 function oCal(){const m=S.calMonth,first=m+'-01',start=monday(first),t=today();const cells=[];for(let i=0;i<42;i++){cells.push(addDays(start,i))}const rows=cells[35].slice(0,7)===m?42:35;
- const items=d=>{const a=[];db.events.filter(e=>e.date===d).forEach(e=>a.push(`<button class="ev" data-act="edit" data-col="events" data-id="${e.id}">${e.time?e.time+' ':''}${esc(e.title)}</button>`));db.birthdays.filter(b=>b.date&&b.date.slice(5)===d.slice(5)).forEach(b=>a.push(`<button class="ev b" data-act="edit" data-col="birthdays" data-id="${b.id}">${esc(b.name)}'s birthday</button>`));db.trips.filter(tr=>tr.start&&tr.start<=d&&(tr.end||tr.start)>=d).forEach(tr=>a.push(`<button class="ev t" data-act="edit" data-col="trips" data-id="${tr.id}">${esc(tr.destination)}</button>`));db.dates.filter(x=>x.date===d).forEach(x=>a.push(`<button class="ev dt" data-act="edit" data-col="dates" data-id="${x.id}">${esc(x.idea)}</button>`));return a.join('')};
+ const items=d=>{const a=[];db.events.filter(e=>e.date===d).forEach(e=>a.push(`<button class="ev" data-act="edit" data-col="events" data-id="${e.id}">${e.time?e.time+' ':''}${esc(e.title)}</button>`));db.birthdays.filter(b=>b.date&&b.date.slice(5)===d.slice(5)).forEach(b=>a.push(`<button class="ev b" data-act="edit" data-col="birthdays" data-id="${b.id}">${esc(b.name)}'s birthday</button>`));db.trips.filter(tr=>tr.start&&tr.start<=d&&(tr.end||tr.start)>=d).forEach(tr=>a.push(`<button class="ev t" data-act="edit" data-col="trips" data-id="${tr.id}">${esc(tr.destination)}</button>`));db.dates.filter(x=>x.date===d).forEach(x=>a.push(`<button class="ev dt" data-act="edit" data-col="dates" data-id="${x.id}">${esc(x.idea)}</button>`));extOn(d).forEach(x=>a.push(`<span class="ev x" title="${esc(x.cal)}">${x.time?x.time+' ':''}${esc(x.title)}</span>`));return a.join('')};
  return `<div class="cardhead">${navBar('navCal',fMonth(m))}${addBtn('events','New event',{date:t})}</div>
  <div class="cal">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="dh">${d}</div>`).join('')}${cells.slice(0,rows).map(d=>`<div class="dc ${ymOf(d)!==m?'out':''} ${d===t?'today':''}" data-act="calDay" data-v="${d}" role="button" tabindex="0" aria-label="Add event on ${fFull(d)}"><span class="d">${parse(d).getDate()}</span>${items(d)}</div>`).join('')}</div>
  <div class="legend"><span><i style="background:var(--sage-soft)"></i>Event</span><span><i style="background:var(--clay-soft)"></i>Birthday</span><span><i style="background:var(--sand)"></i>Trip</span><span><i style="background:var(--rust-soft)"></i>Date night</span></div>`}
@@ -995,13 +1106,14 @@ function vSettings(){const s=db.settings;
  </section>
  <section class="card stack" style="gap:14px"><h3>Your data</h3>
   <p class="muted" id="syncnote">${syncNote()}</p>
-  <div class="row">${configured()?(tokenOk()?`<button class="btn" data-act="syncNow">Sync now</button><button class="btn ghost" data-act="signOut">Sign out on this device</button>`:`<button class="btn primary gbtn" data-act="signIn">${GICON}Sign in with Google</button>`):''}</div>
+  <div class="row">${configured()?(G.problem==='scope'?`<button class="btn primary gbtn" data-act="allowDrive">${GICON}Allow Drive access</button>`:'')+(tokenOk()?`<button class="btn" data-act="syncNow">Sync now</button><button class="btn ghost" data-act="signOut">Sign out on this device</button>`:`<button class="btn primary gbtn" data-act="signIn">${GICON}Sign in with Google</button>`):''}</div>
   <p class="muted small">Download a backup now and then, including photos and uploaded invoices.</p>
   <div class="row"><button class="btn primary" data-act="export">Download backup</button><button class="btn" data-act="import">Restore from backup</button></div>
   <div class="rule"></div>
   ${db.examples?`<p class="muted">Example entries are still showing.</p><div><button class="btn" data-act="clearEx">Remove all examples</button></div>`:''}
   <div><button class="btn danger" data-act="wipe" id="wipebtn">Erase everything</button></div>
- </section></div>`}
+ </section>
+ ${calCard()}</div>`}
 
 /* ---------- render ---------- */
 const GICON='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>';
@@ -1063,6 +1175,11 @@ const A={
  edit:(e,ev)=>{if(ev.target.closest('[data-act="toggleTodo"],[data-act="viewFile"],[data-act="toggle"]'))return;openForm(e.dataset.col,e.dataset.id)},
  closeModal:(e,ev)=>{if(e.classList.contains('scrim')&&ev.target!==e)return;closeModal()},
  delItem:e=>{if(e.dataset.sure){const {col,id}=MODAL;db[col]=db[col].filter(x=>x.id!==id);if(col==='projects')db.todos.forEach(t=>{if(t.project===id)t.project=''});save();closeModal();render();toast('Deleted')}else{e.dataset.sure=1;e.textContent='Tap again to delete'}},
+ calConnect:()=>{db.settings.gcal=true;G.rev++;persist().then(()=>signIn(false,true,true))},
+ calOff:()=>{db.settings.gcal=false;C.calId=null;C.ext={};save();render();toast('Calendar disconnected. The Sadhana calendar stays in Google Calendar until you delete it there.')},
+ calNow:()=>{C.extAt={};C.list=null;runCal();toast('Syncing calendar')},
+ calWhat:e=>{db.settings.gcalWhat={...calWhat(),[e.dataset.k]:e.checked};save();calSoon()},
+ calShow:e=>{const s=new Set(showCals());if(e.checked)s.add(e.dataset.id);else s.delete(e.dataset.id);db.settings.gcalShow=[...s];C.ext={};C.extAt={};save();render()},
  clearFile:e=>{MODAL.clear[e.dataset.k]=1;e.parentElement.textContent='Will be removed when you save'},
  toggleTodo:e=>{const t=byId('todos',e.dataset.id);t.done=!t.done;t.doneOn=t.done?today():'';save();render()},
  toggle:e=>{const x=byId(e.dataset.col,e.dataset.id);x[e.dataset.k]=!x[e.dataset.k];save();render()},
@@ -1087,7 +1204,8 @@ const A={
  signIn:()=>signIn(false),
  syncNow:()=>{sync();toast('Syncing')},
  signOut:async()=>{signOut();await persist();render();toast('Signed out on this device')},
- syncTap:()=>{if(configured()&&!tokenOk())signIn(false);else sync()},
+ syncTap:()=>{if(G.problem==='scope')signIn(false,true);else if(G.problem==='api_off'){S.view='settings';render()}else if(configured()&&!tokenOk())signIn(false);else sync()},
+ allowDrive:()=>signIn(false,true),
  viewFile:async e=>{const u=await fileURL(e.dataset.f);const r=await fileRec(e.dataset.f);if(!u){toast('File not found');return}
   const isImg=(r.type||'').startsWith('image/'),isPdf=(r.type||'')==='application/pdf';
   const box=document.createElement('div');box.className='scrim';box.style.zIndex=70;box.innerHTML=`<div class="modal" style="width:min(900px,100%)"><header class="cardhead"><h3 style="overflow-wrap:anywhere">${esc(r.name)}</h3><button class="iconbtn" aria-label="Close">${ic('x')}</button></header><div style="padding:12px 24px 22px">${isImg?`<img src="${u}" alt="${esc(r.name)}" style="border-radius:10px">`:isPdf?`<iframe src="${u}" title="${esc(r.name)}" style="width:100%;height:70vh;border:1px solid var(--line);border-radius:10px"></iframe>`:''}<p style="margin-top:10px"><a href="${u}" target="_blank" rel="noopener" download="${esc(r.name)}" class="btn sm">Open or save the file</a></p></div></div>`;
