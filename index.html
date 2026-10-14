@@ -596,7 +596,7 @@ const calGranted=()=>tokenOk()&&(G.scopes||'').includes('calendar.app.created');
 const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('calendar.events.readonly')&&(G.scopes||'').includes('calendar.calendarlist.readonly');
 const C={calId:null,list:null,busy:false,again:false,timer:null,last:0,ext:{},extAt:{},loading:{},error:null,pushed:0};
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London'}catch(e){return 'Europe/London'}})();
-const calDefaults=()=>({events:true,birthdays:true,seva:true,trips:true,dates:true,todos:false});
+const calDefaults=()=>({events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,todos:false});
 const calWhat=()=>({...calDefaults(),...(db.settings.gcalWhat||{})});
 const hexId=s=>'sd'+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,'0')).join('');
 const strHash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
@@ -616,6 +616,9 @@ function wanted(){const w=calWhat(),out={};const tz=TZ;
  if(w.seva)for(const s of db.seva||[]){if(!s.due||s.done||!s.title)continue;out['sv:'+s.id]=allDay(s.due,null,`🪷 ${s.kind==='Call'?'Seva call':'Seva'}: ${s.title}`,{description:[s.person,s.phone,s.notes].filter(Boolean).join('\n')})}
  if(w.trips)for(const t of db.trips||[]){if(!t.start||!t.destination)continue;out['tr:'+t.id]=allDay(t.start,dayAfter(t.end&&t.end>=t.start?t.end:t.start),`✈️ ${t.destination}`,{description:t.stay||''})}
  if(w.dates)for(const d of db.dates||[]){if(!d.date||!d.idea||d.status==='Idea')continue;out['dt:'+d.id]=allDay(d.date,null,`💛 ${d.idea}`,{description:d.notes||''})}
+ if(w.schedule){const from=addDays(today(),-14);for(const d in db.days||{}){if(d<from)continue;const sc=(db.days[d]||{}).schedule||{};
+  for(const k in sc){const v=(sc[k]||'').trim();if(!v||!/^\d{2}:\d{2}$/.test(k))continue;const h=+k.slice(0,2),m=+k.slice(3);
+   out['sc:'+d+':'+k.replace(':','')]={summary:v,start:{dateTime:`${d}T${k}:00`,timeZone:tz},end:{dateTime:h<23?`${d}T${pad(h+1)}:${pad(m)}:00`:`${d}T23:59:00`,timeZone:tz},description:'From your Sadhana day plan'}}}}
  if(w.todos)for(const t of db.todos||[]){if(!t.due||t.done||!t.title)continue;out['td:'+t.id]=allDay(t.due,null,`☑️ Due: ${t.title}`)}
  for(const k in out){const b=out[k];b.status='confirmed';const h=strHash(JSON.stringify(b));b.extendedProperties={private:{sadhana:'1',h}}}
  return out}
@@ -676,7 +679,7 @@ function calCard(){const w=calWhat(),on=!!db.settings.gcal;
  return `<section class="card stack" style="gap:14px"><h3>Calendar</h3><p class="muted" id="calnote">${calNote()}</p>
   ${!on?`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Connect Google Calendar</button></div>`
   :`${calGranted()?'':`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Allow calendar access</button></div>`}
-   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('todos','To-do due dates')}</div>
+   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('schedule','Day plan schedule')}${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('todos','To-do due dates')}</div>
    ${lists}
    <div class="row"><button class="btn" data-act="calNow">Sync calendar now</button><button class="btn ghost" data-act="calOff">Disconnect</button></div>
    <details class="small muted"><summary style="cursor:pointer">See it in Apple Calendar</summary><p style="margin-top:8px"><b>Mac:</b> System Settings &gt; Internet Accounts &gt; Add Account &gt; Google, sign in, and turn on Calendars. <b>iPhone:</b> Settings &gt; Apps &gt; Calendar &gt; Calendar Accounts &gt; Add Account &gt; Google. The Sadhana calendar then appears in Apple Calendar with your others; you can change its colour there.</p></details>`}
