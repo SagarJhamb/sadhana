@@ -662,7 +662,7 @@ function extOn(d){const ym=d.slice(0,7);if(!calCanRead()||!db.settings.gcal)retu
 function calSoon(){if(!db.settings.gcal||!calGranted())return;clearTimeout(C.timer);C.timer=setTimeout(runCal,Date.now()-C.last<20000?20000:1500)}
 async function runCal(){if(C.busy){C.again=true;return}if(!db.settings.gcal||!calGranted())return;
  C.busy=true;C.last=Date.now();
- try{await pushCalendar();C.error=null;for(const k in C.extAt)C.extAt[k]=0}
+ try{await pushCalendar();C.error=null;C.okAt=new Date();for(const k in C.extAt)C.extAt[k]=0}
  catch(e){C.error=e.code==='scope'?'scope':e.code==='api_off'?'api_off':'push';console.warn('Calendar sync failed',e)}
  C.busy=false;if(C.again){C.again=false;calSoon()}
  const n=document.getElementById('calnote');if(n)n.innerHTML=calNote()}
@@ -672,7 +672,8 @@ function calNote(){
  if(!calGranted())return 'Calendar is switched on, but not yet allowed on this device. Tap <b>Allow calendar access</b> and make sure the calendar boxes are ticked on Google\'s screen.';
  if(C.error==='api_off')return '<b>Calendar sync is blocked:</b> turn on the <b>Google Calendar API</b> in the same Google Cloud project as this app, wait a few minutes, then tap <b>Sync calendar now</b>.';
  if(C.error==='push')return 'The last calendar update did not finish. It will try again; you can also tap <b>Sync calendar now</b>.';
- return 'Connected. Your planner dates go into the <b>Sadhana</b> calendar in Google Calendar'+(calCanRead()?', and events from the calendars ticked below show up here.':'.')}
+ const when=C.okAt?` Last updated from this device at ${pad(C.okAt.getHours())}:${pad(C.okAt.getMinutes())}.`:'';
+ return 'Connected on this device. Your planner dates go into the <b>Sadhana</b> calendar in Google Calendar'+(calCanRead()?', and events from the calendars ticked below show up here.':'.')+when}
 function calCard(){const w=calWhat(),on=!!db.settings.gcal;
  const box=(k,l)=>`<label class="cb"><input type="checkbox" class="check" data-act="calWhat" data-k="${k}" ${w[k]?'checked':''}>${l}</label>`;
  let lists='';if(on&&calCanRead()){if(C.list){lists=`<div class="rule"></div><p class="small muted">Show events from:</p><div class="stack" style="gap:6px">${C.list.map(c=>`<label class="cb"><input type="checkbox" class="check" data-act="calShow" data-id="${esc(c.primary?'primary':c.id)}" ${showCals().includes(c.primary?'primary':c.id)?'checked':''}><i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${esc(c.color||'var(--sage)')}"></i>${esc(c.name)}${c.primary?' (main)':''}</label>`).join('')}</div>`}else{setTimeout(()=>calList().then(()=>refreshView()).catch(()=>{}),0)}}
