@@ -643,7 +643,7 @@ async function pushCalendar(){
 async function calList(){if(C.list)return C.list;const j=await calApi('/users/me/calendarList?maxResults=250');C.list=(j.items||[]).filter(c=>c.summary!=='Sadhana'||c.description!=='Planner events from Sadhana').map(c=>({id:c.id,name:c.summaryOverride||c.summary,primary:!!c.primary,color:c.backgroundColor}));return C.list}
 const showCals=()=>db.settings.gcalShow||['primary'];
 async function loadMonth(ym){
- if(!calCanRead()||C.loading[ym])return;if(C.extAt[ym]&&Date.now()-C.extAt[ym]<10*60000)return;
+ if(!calCanRead()||C.loading[ym])return;if(C.extAt[ym]&&Date.now()-C.extAt[ym]<60000)return;
  C.loading[ym]=true;
  try{const lst=await calList();const ids=showCals().map(id=>id==='primary'?(lst.find(c=>c.primary)||{}).id||'primary':id);
   const tMin=new Date(parse(ym+'-01').getTime()-86400000).toISOString(),tMax=new Date(parse(addMonths(ym,1)+'-01').getTime()+86400000).toISOString();
@@ -656,7 +656,7 @@ async function loadMonth(ym){
   C.ext[ym]=out;C.extAt[ym]=Date.now();C.error=null}
  catch(e){C.error=e.code==='scope'?'scope':'load';C.extAt[ym]=Date.now()}
  C.loading[ym]=false;refreshView()}
-function extOn(d){const ym=d.slice(0,7);if(!calCanRead()||!db.settings.gcal)return [];if(!C.ext[ym]&&!C.loading[ym]&&!(C.extAt[ym]&&Date.now()-C.extAt[ym]<60000))setTimeout(()=>loadMonth(ym),0);return (C.ext[ym]||[]).filter(e=>e.date===d).sort((a,b)=>(a.time||'00')<(b.time||'00')?-1:1)}
+function extOn(d){const ym=d.slice(0,7);if(!calCanRead()||!db.settings.gcal)return [];if(!C.loading[ym]&&!(C.extAt[ym]&&Date.now()-C.extAt[ym]<120000))setTimeout(()=>loadMonth(ym),0);return (C.ext[ym]||[]).filter(e=>e.date===d).sort((a,b)=>(a.time||'00')<(b.time||'00')?-1:1)}
 
 /* scheduling */
 function calSoon(){if(!db.settings.gcal||!calGranted())return;clearTimeout(C.timer);C.timer=setTimeout(runCal,Date.now()-C.last<20000?20000:1500)}
@@ -685,6 +685,10 @@ function calCard(){const w=calWhat(),on=!!db.settings.gcal;
    <div class="row"><button class="btn" data-act="calNow">Sync calendar now</button><button class="btn ghost" data-act="calOff">Disconnect</button></div>
    <details class="small muted"><summary style="cursor:pointer">See it in Apple Calendar</summary><p style="margin-top:8px"><b>Mac:</b> System Settings &gt; Internet Accounts &gt; Add Account &gt; Google, sign in, and turn on Calendars. <b>iPhone:</b> Settings &gt; Apps &gt; Calendar &gt; Calendar Accounts &gt; Add Account &gt; Google. The Sadhana calendar then appears in Apple Calendar with your others; you can change its colour there.</p></details>`}
  </section>`}
+
+/* fetch her calendar again whenever the app comes back to the front, and every two minutes while open */
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&db&&db.settings.gcal){C.extAt={};C.list=null;refreshView()}});
+setInterval(()=>{if(document.visibilityState==='visible'&&db&&db.settings.gcal&&calCanRead()){C.extAt={};refreshView()}},120000);
 
 /* ---------- seed (clearly marked examples) ---------- */
 function seed(){
