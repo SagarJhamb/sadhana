@@ -605,6 +605,7 @@ const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('calendar.events.readonl
 const C={calId:null,list:null,busy:false,again:false,timer:null,last:0,ext:{},extAt:{},loading:{},error:null,pushed:0};
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London'}catch(e){return 'Europe/London'}})();
 const calDefaults=()=>({events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,todos:false});
+const calAlerts=()=>({timed:'10',bday:'day',allday:'eve',...(db.settings.gcalAlerts||{})});
 const calWhat=()=>({...calDefaults(),...(db.settings.gcalWhat||{})});
 const hexId=s=>'sd'+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,'0')).join('');
 const strHash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
@@ -630,7 +631,13 @@ function wanted(){const w=calWhat(),out={};const tz=TZ;
    ks.forEach((k,i)=>{const st=mins(k),nx=i+1<ks.length?mins(ks[i+1]):Infinity;const len=+(((db.days[d]||{}).dur||{})[k])||0;const en=Math.min(len?st+len:Math.min(st+(k.endsWith(':30')?30:60),nx),23*60+59);
     out['sc:'+d+':'+k.replace(':','')]={summary:sc[k].trim(),start:{dateTime:`${d}T${k}:00`,timeZone:tz},end:{dateTime:`${d}T${hm(en)}:00`,timeZone:tz},description:'From your Sadhana day plan'}})}}
  if(w.todos)for(const t of db.todos||[]){if(!t.due||t.done||!t.title)continue;out['td:'+t.id]=allDay(t.due,null,`☑️ Due: ${t.title}`)}
- for(const k in out){const b=out[k];b.status='confirmed';const h=strHash(JSON.stringify(b));b.extendedProperties={private:{sadhana:'1',h}}}
+ const al=calAlerts();
+ for(const k in out){const b=out[k];let mins=[];
+  if(b.start.dateTime){if(+al.timed)mins=[+al.timed]}
+  else if(k.startsWith('bd:')){mins=al.bday==='week'?[10980,900]:al.bday==='day'?[900]:[]}
+  else mins=al.allday==='eve'?[360]:al.allday==='morn'?[900]:al.allday==='two'?[2340]:[];
+  b.reminders={useDefault:false,overrides:mins.map(m=>({method:'popup',minutes:m}))};
+  b.status='confirmed';const h=strHash(JSON.stringify(b));b.extendedProperties={private:{sadhana:'1',h}}}
  return out}
 
 async function findOrMakeCal(){
@@ -692,6 +699,12 @@ function calCard(){const w=calWhat(),on=!!db.settings.gcal;
   ${!on?`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Connect Google Calendar</button></div>`
   :`${calGranted()?'':`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Allow calendar access</button></div>`}
    <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('schedule','Day plan schedule')}${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('todos','To-do due dates')}</div>
+   <div class="rule"></div><p class="small muted">Alerts on your iPhone and Mac (through Apple Calendar):</p>
+   <div class="stack" style="gap:10px">
+    ${alertSel('timed','Schedule and timed events',[['0','No alert'],['5','5 minutes before'],['10','10 minutes before'],['15','15 minutes before'],['30','30 minutes before'],['60','1 hour before']])}
+    ${alertSel('bday','Birthdays',[['off','No alert'],['day','Day before at 9am'],['week','A week before and the day before']])}
+    ${alertSel('allday','Seva, trips, date nights and to-dos',[['off','No alert'],['eve','Day before at 6pm'],['morn','Day before at 9am'],['two','Two days before at 9am']])}
+   </div>
    ${lists}
    <div class="row"><button class="btn" data-act="calNow">Sync calendar now</button><button class="btn ghost" data-act="calOff">Disconnect</button></div>
    <details class="small muted"><summary style="cursor:pointer">See it in Apple Calendar</summary><p style="margin-top:8px"><b>Mac:</b> System Settings &gt; Internet Accounts &gt; Add Account &gt; Google, sign in, and turn on Calendars. <b>iPhone:</b> Settings &gt; Apps &gt; Calendar &gt; Calendar Accounts &gt; Add Account &gt; Google. The Sadhana calendar then appears in Apple Calendar with your others; you can change its colour there.</p></details>`}
@@ -700,6 +713,8 @@ function calCard(){const w=calWhat(),on=!!db.settings.gcal;
 /* fetch her calendar again whenever the app comes back to the front, and every two minutes while open */
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&db&&db.settings.gcal){C.extAt={};C.list=null;refreshView()}});
 setInterval(()=>{if(document.visibilityState==='visible'&&db&&db.settings.gcal&&calCanRead()){C.extAt={};refreshView()}},120000);
+
+function alertSel(k,label,opts){const v=String(calAlerts()[k]);return `<label class="small muted" style="display:flex;flex-direction:column;gap:5px">${label}<select class="field" id="al_${k}" data-bind="settings.gcalAlerts.${k}" style="max-width:260px">${opts.map(([o,l])=>`<option value="${o}" ${o===v?'selected':''}>${l}</option>`).join('')}</select></label>`}
 
 /* ---------- seed (clearly marked examples) ---------- */
 function seed(){
