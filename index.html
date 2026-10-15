@@ -189,7 +189,7 @@ textarea.field{min-height:90px;resize:vertical;line-height:1.55}
 select.dcat{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--muted);font:500 .72rem var(--sans);padding:0 2px 8px;cursor:pointer;max-width:84px;text-overflow:ellipsis}
 select.dcat:hover,select.dcat:focus{color:var(--ink)}
 .catdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;box-shadow:0 0 0 1.5px rgba(255,255,255,.75)}
-.catbar .chip:not(.on){opacity:.5}
+.catchip{display:inline-flex;align-items:center}
 select.dur{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--muted);font:500 .72rem var(--sans);padding:0 2px 8px;cursor:pointer;text-align:right}
 select.dur:hover,select.dur:focus{color:var(--ink)}
 .ln:has(input.hand:placeholder-shown) select.dur,.ln:has(input.hand:placeholder-shown) select.dcat{visibility:hidden}
@@ -637,8 +637,8 @@ const calGranted=()=>tokenOk()&&(G.scopes||'').includes('calendar.app.created');
 const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('calendar.events.readonly')&&(G.scopes||'').includes('calendar.calendarlist.readonly');
 const C={calId:null,list:null,busy:false,again:false,timer:null,last:0,ext:{},extAt:{},loading:{},error:null,pushed:0};
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London'}catch(e){return 'Europe/London'}})();
-const calDefaults=()=>({hearings:true,events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,todos:false});
-const calAlerts=()=>({hearing:'1440,60',timed:'10',bday:'day',allday:'eve',...(db.settings.gcalAlerts||{})});
+const calDefaults=()=>({hearings:true,events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,tasks:true});
+const calAlerts=()=>({hearing:'1440,60',tasks:'off',timed:'10',bday:'day',allday:'eve',...(db.settings.gcalAlerts||{})});
 const calWhat=()=>({...calDefaults(),...(db.settings.gcalWhat||{})});
 const hexId=s=>'sd'+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,'0')).join('');
 const strHash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
@@ -673,11 +673,15 @@ function wanted(){const w=calWhat(),out={};const tz=TZ;const cm=catMap();
   if(h.status==='Done')continue;
   if(h.papersDue)out['hp:'+h.id]=allDay(h.papersDue,null,`📚 Papers due: ${nm}`,{_cat:cm.hearings});
   if(h.skeletonDue)out['hs:'+h.id]=allDay(h.skeletonDue,null,`✍️ Skeleton due: ${nm}`,{_cat:cm.hearings})}
- if(w.todos)for(const t of db.todos||[]){if(!t.due||t.done||!t.title)continue;out['td:'+t.id]=allDay(t.due,null,`☑️ Due: ${t.title}`,{_cat:t.category})}
+ if(w.tasks){const td=today();for(const t of db.todos||[]){if(t.done||!t.title)continue;const when=t.planned||t.due;if(!when)continue;
+  const day=when<td?td:when;const extra=[t.priority&&t.priority!=='Normal'?t.priority:'',t.due&&t.due!==day?`due ${fShort(t.due)}`:'',when<td?`from ${fShort(when)}`:''].filter(Boolean).join(', ');
+  const proj=t.project?((db.projects||[]).find(p=>p.id===t.project)||{}).name:'';
+  out['td:'+t.id]=allDay(day,null,`${t.priority==='Non-negotiable'?'⭐':'☐'} ${t.title}${extra?' ('+extra+')':''}`,{description:[proj?'Project: '+proj:'',t.notes||'','Tick it off in Sadhana and it will disappear from here.'].filter(Boolean).join('\n'),_cat:t.category,task:1})}}
  const al=calAlerts();
  const where={};
  for(const k in out){const b=out[k];where[k]=catCals()?validCat(b._cat):'';delete b._cat;let mins=[];
-  if(b.hearing){delete b.hearing;mins=String(al.hearing).split(',').map(Number).filter(Boolean)}
+  if(b.task){delete b.task;mins=al.tasks==='morn'?[900]:al.tasks==='eve'?[360]:[]}
+  else if(b.hearing){delete b.hearing;mins=String(al.hearing).split(',').map(Number).filter(Boolean)}
   else if(b.start.dateTime){if(+al.timed)mins=[+al.timed]}
   else if(k.startsWith('bd:')){mins=al.bday==='week'?[10980,900]:al.bday==='day'?[900]:[]}
   else mins=al.allday==='eve'?[360]:al.allday==='morn'?[900]:al.allday==='two'?[2340]:[];
@@ -757,10 +761,11 @@ function calCard(){const w=calWhat(),on=!!db.settings.gcal;
  return `<section class="card stack" style="gap:14px"><h3>Calendar</h3><p class="muted" id="calnote">${calNote()}</p>
   ${!on?`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Connect Google Calendar</button></div>`
   :`${calGranted()?'':`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Allow calendar access</button></div>`}
-   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('hearings','Court diary (hearings, papers and skeleton dates)')}${box('schedule','Day plan schedule')}${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('todos','To-do due dates')}</div>
+   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('hearings','Court diary (hearings, papers and skeleton dates)')}${box('schedule','Day plan schedule')}${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('tasks','To-dos, as all-day items on the day planned (or due)')}</div>
    <div class="rule"></div><p class="small muted">Alerts on your iPhone and Mac (through Apple Calendar):</p>
    <div class="stack" style="gap:10px">
     ${alertSel('hearing','Hearings',[['0','No alert'],['60','1 hour before'],['120','2 hours before'],['1440','The day before'],['1440,60','The day before and 1 hour before']])}
+    ${alertSel('tasks','To-dos',[['off','No alert'],['eve','Day before at 6pm'],['morn','Day before at 9am']])}
     ${alertSel('timed','Schedule and timed events',[['0','No alert'],['5','5 minutes before'],['10','10 minutes before'],['15','15 minutes before'],['30','30 minutes before'],['60','1 hour before']])}
     ${alertSel('bday','Birthdays',[['off','No alert'],['day','Day before at 9am'],['week','A week before and the day before']])}
     ${alertSel('allday','Seva, trips, date nights and to-dos',[['off','No alert'],['eve','Day before at 6pm'],['morn','Day before at 9am'],['two','Two days before at 9am']])}
@@ -788,13 +793,14 @@ const validCat=id=>catById(id)?id:'';
 const catColor=id=>(catById(id)||{}).color||'';
 const catMap=()=>({hearings:'c_work',seva:'c_satsang',birthdays:'c_family',trips:'c_personal',dates:'c_social',...(db.settings.catMap||{})});
 const catCals=()=>db.settings.catCals!==false;
-const hiddenCats=()=>new Set(db.settings.catHide||[]);
-const catShown=id=>!hiddenCats().has(validCat(id)||'none');
+const onlyCats=()=>new Set((db.settings.catOnly||[]).filter(id=>id==='none'||catById(id)));
+const catShown=id=>{const o=onlyCats();return !o.size||o.has(validCat(id)||'none')};
 const evStyle=id=>{const c=catColor(validCat(id));return c?` style="background:color-mix(in srgb, ${c} 18%, transparent);color:inherit;box-shadow:inset 3px 0 0 ${c}"`:''};
 const rowStyle=id=>{const c=catColor(validCat(id));return c?` style="box-shadow:inset 3px 0 0 ${c};padding-left:8px"`:''};
 function catOpts(sel,blank){return `<option value="">${blank}</option>`+cats().map(c=>`<option value="${esc(c.id)}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join('')}
-function catFilterBar(){const hid=hiddenCats();if(!cats().length)return '';
- return `<div class="row catbar" style="gap:6px;flex-wrap:wrap;margin:4px 0 12px">${cats().map(c=>`<button class="chip ${hid.has(c.id)?'':'on'}" data-act="catToggle" data-id="${esc(c.id)}"><i class="catdot" style="background:${esc(c.color)}"></i>${esc(c.name)}</button>`).join('')}<button class="chip ${hid.has('none')?'':'on'}" data-act="catToggle" data-id="none">No category</button></div>`}
+function catFilterBar(){const o=onlyCats();if(!cats().length)return '';
+ const chip=(id,label,col)=>`<button class="chip catchip ${o.has(id)?'on':''}" data-act="catPick" data-id="${esc(id)}" aria-pressed="${o.has(id)}">${col?`<i class="catdot" style="background:${esc(col)}"></i>`:''}${label}</button>`;
+ return `<div class="row catbar" style="gap:6px;flex-wrap:wrap;margin:4px 0 12px"><button class="chip catchip ${o.size?'':'on'}" data-act="catPick" data-id="" aria-pressed="${!o.size}">All</button>${cats().map(c=>chip(c.id,esc(c.name),c.color)).join('')}${chip('none','No category','')}</div>${o.size?`<p class="small muted" style="margin:-4px 0 10px">Showing ${[...o].map(id=>id==='none'?'items with no category':esc((catById(id)||{}).name||'')).join(', ')}. Tap <b>All</b> to see everything.</p>`:''}`}
 function catCard(){const m=catMap();
  const mapSel=(k,l)=>`<label class="small muted" style="display:flex;flex-direction:column;gap:5px">${l}<select class="field" data-bind="settings.catMap.${k}" style="max-width:220px">${catOpts(validCat(m[k]),'No category')}</select></label>`;
  return `<section class="card stack" style="gap:14px"><h3>Calendar categories</h3>
@@ -1342,7 +1348,7 @@ const A={
  delItem:e=>{if(e.dataset.sure){const {col,id}=MODAL;db[col]=db[col].filter(x=>x.id!==id);if(col==='projects')db.todos.forEach(t=>{if(t.project===id)t.project=''});save();closeModal();render();toast('Deleted')}else{e.dataset.sure=1;e.textContent='Tap again to delete'}},
  catAdd:()=>{const n=cats().length;cats().push({id:'c_'+uid(),name:'New category',color:CAT_COLOURS[n%CAT_COLOURS.length][0]});save();render();setTimeout(()=>{const el=document.getElementById('catname'+n);if(el){el.focus();el.select()}},30)},
  catDel:e=>{if(!e.dataset.sure){e.dataset.sure=1;toast('Tap the cross again to delete this category');return}db.categories=cats().filter(c=>c.id!==e.dataset.id);save();render();toast('Category deleted. Its items now have no category.')},
- catToggle:e=>{const h=hiddenCats(),id=e.dataset.id;if(h.has(id))h.delete(id);else h.add(id);db.settings.catHide=[...h];save();render()},
+ catPick:e=>{const id=e.dataset.id;if(!id){db.settings.catOnly=[]}else{const o=onlyCats();if(o.has(id))o.delete(id);else o.add(id);db.settings.catOnly=[...o]}save();render()},
  calConnect:()=>{db.settings.gcal=true;G.rev++;persist().then(()=>signIn(false,true,true))},
  calOff:()=>{db.settings.gcal=false;C.calId=null;C.ext={};save();render();toast('Calendar disconnected. The Sadhana calendar stays in Google Calendar until you delete it there.')},
  calNow:()=>{C.extAt={};C.list=null;runCal();toast('Syncing calendar')},
