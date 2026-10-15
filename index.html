@@ -177,6 +177,12 @@ textarea.field{min-height:90px;resize:vertical;line-height:1.55}
 .ln{display:grid;grid-template-columns:52px 1fr;align-items:end;border-bottom:1px solid var(--line);min-height:34px;gap:8px}
 .ln.half{min-height:30px;border-bottom-style:dashed}
 .ln.half .h{opacity:.7}
+.ln:has(select.dur){grid-template-columns:52px 1fr auto}
+select.dur{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--muted);font:500 .72rem var(--sans);padding:0 2px 8px;cursor:pointer;text-align:right}
+select.dur:hover,select.dur:focus{color:var(--ink)}
+.ln:has(input.hand:placeholder-shown) select.dur{visibility:hidden}
+.ln:has(input.hand:focus) select.dur{visibility:visible}
+.ln input.hand::placeholder{color:var(--muted);opacity:.55}
 .ln.nohour{grid-template-columns:24px 1fr}
 .ln .h{font-size:.72rem;color:var(--muted);padding-bottom:7px;font-variant-numeric:tabular-nums}
 .hand{border:0;background:transparent;font-family:var(--hand);font-size:1.35rem;line-height:1.3;padding:2px 0;width:100%;min-width:0;color:var(--ink)}
@@ -621,7 +627,7 @@ function wanted(){const w=calWhat(),out={};const tz=TZ;
  if(w.schedule){const from=addDays(today(),-14);const mins=k=>(+k.slice(0,2))*60+(+k.slice(3));const hm=n=>`${pad(Math.floor(n/60))}:${pad(n%60)}`;
   for(const d in db.days||{}){if(d<from)continue;const sc=(db.days[d]||{}).schedule||{};
    const ks=Object.keys(sc).filter(k=>/^\d{2}:\d{2}$/.test(k)&&(sc[k]||'').trim()).sort();
-   ks.forEach((k,i)=>{const st=mins(k),nx=i+1<ks.length?mins(ks[i+1]):Infinity;const en=Math.min(st+(k.endsWith(':30')?30:60),nx,23*60+59);
+   ks.forEach((k,i)=>{const st=mins(k),nx=i+1<ks.length?mins(ks[i+1]):Infinity;const len=+(((db.days[d]||{}).dur||{})[k])||0;const en=Math.min(len?st+len:Math.min(st+(k.endsWith(':30')?30:60),nx),23*60+59);
     out['sc:'+d+':'+k.replace(':','')]={summary:sc[k].trim(),start:{dateTime:`${d}T${k}:00`,timeZone:tz},end:{dateTime:`${d}T${hm(en)}:00`,timeZone:tz},description:'From your Sadhana day plan'}})}}
  if(w.todos)for(const t of db.todos||[]){if(!t.due||t.done||!t.title)continue;out['td:'+t.id]=allDay(t.due,null,`☑️ Due: ${t.title}`)}
  for(const k in out){const b=out[k];b.status='confirmed';const h=strHash(JSON.stringify(b));b.extendedProperties={private:{sadhana:'1',h}}}
@@ -877,6 +883,7 @@ function vHome(){
   </div>
  </div>`;
 }
+const DURS=[['','Length'],['30','30m'],['60','1h'],['90','1½h'],['120','2h'],['150','2½h'],['180','3h'],['240','4h'],['300','5h'],['360','6h'],['480','8h']];
 const hLabel=k=>{const h=+k.slice(0,2),m=k.slice(3);return `${h%12||12}${m!=='00'?':'+m:''}${h<12?'am':'pm'}`};
 function nextBday(date){if(!date)return '';const t=today(),md=date.slice(5);let n=t.slice(0,4)+'-'+md;if(n<t)n=(+t.slice(0,4)+1)+'-'+md;return n}
 const feeOpen=f=>f.status==='Outstanding'||f.status==='Part paid';
@@ -890,13 +897,14 @@ const WEEKLY_RITUAL=['Review last week and tick off wins','Brain-dump everything
 function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
  const tasks=db.todos.filter(t=>t.planned===d||t.due===d);
  const hours=[];for(let h=5;h<=22;h++){hours.push(pad(h)+':00');if(h<22)hours.push(pad(h)+':30')}
+ const dur=x.dur||{},cover={};hours.forEach(h=>{const v=(x.schedule[h]||'').trim(),m=+dur[h];if(v&&m>30){const st=+h.slice(0,2)*60+(+h.slice(3));for(let t=st+30;t<st+m;t+=30){const k=pad(Math.floor(t/60))+':'+pad(t%60);if(!(x.schedule[k]||'').trim())cover[k]=v}}});
  const wid=x.workout||'';const fp=(db.fitPlan[monday(d)]||{})[(parse(d).getDay()+6)%7]||{};const planned=fp.w?nameOf('workouts',fp.w):'';
  return `<div class="cardhead">${navBar('navDay',fLong(d)+' '+d.slice(0,4))}<span class="muted small">Daily framework: morning plan, evening review</span></div>
  <div class="spread">
   <div class="pg">
    <div class="row" style="justify-content:space-between"><span class="band">Date · ${fFull(d)}</span></div>
    ${(()=>{const xs=extOn(d);return xs.length?`<div><span class="band">From your calendar</span><div class="stack" style="gap:4px;margin-top:6px">${xs.map(e=>`<div class="small"><b class="num">${e.time?hLabel(e.time):'All day'}</b> · ${esc(e.title)}</div>`).join('')}</div></div>`:''})()}
-   <div><span class="band">Schedule</span><div class="lines" style="margin-top:6px">${hours.map(h=>`<div class="ln${h.endsWith(':30')?' half':''}"><span class="h">${hLabel(h)}</span><input class="hand" id="s${h}" data-bind="${P}.schedule.${h}" value="${esc(x.schedule[h]||'')}" aria-label="${hLabel(h)}"></div>`).join('')}</div></div>
+   <div><span class="band">Schedule</span><div class="lines" style="margin-top:6px">${hours.map(h=>`<div class="ln${h.endsWith(':30')?' half':''}"><span class="h">${hLabel(h)}</span><input class="hand" id="s${h}" data-bind="${P}.schedule.${h}" value="${esc(x.schedule[h]||'')}" placeholder="${cover[h]?'↳ '+esc(cover[h]):' '}" aria-label="${hLabel(h)}"><select class="dur" id="d${h}" data-bind="${P}.dur.${h}" aria-label="Length for ${hLabel(h)}">${DURS.map(([v,l])=>`<option value="${v}" ${String(dur[h]||'')===v?'selected':''}>${l}</option>`).join('')}</select></div>`).join('')}</div></div>
    <div><span class="band">Quick to-dos</span><div class="lines" style="margin-top:6px">${x.quick.map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.quick.${i}.done" ${q.done?'checked':''} aria-label="Done" style="margin-bottom:7px"><input class="hand" id="q${i}" data-bind="${P}.quick.${i}.t" value="${esc(q.t)}" ${q.done?'style="text-decoration:line-through;opacity:.6"':''}></div>`).join('')}</div></div>
   </div>
   <div class="pg">
