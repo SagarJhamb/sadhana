@@ -175,6 +175,14 @@ textarea.field{min-height:90px;resize:vertical;line-height:1.55}
 .band{background:var(--sand);color:var(--muted);text-transform:uppercase;letter-spacing:.14em;font-size:.7rem;font-weight:600;padding:5px 10px;border-radius:5px;display:inline-block}
 .lines{display:flex;flex-direction:column}
 .ln{display:grid;grid-template-columns:52px 1fr;align-items:end;border-bottom:1px solid var(--line);min-height:34px;gap:8px}
+.hcard{display:grid;grid-template-columns:120px minmax(0,1fr);gap:16px;cursor:pointer;padding:16px 18px}
+.hcard.muted{opacity:.6}
+.hwhen{display:flex;flex-direction:column;gap:2px;border-right:1px solid var(--line);padding-right:12px}
+.hwhen .d{font-family:var(--serif);font-size:1.15rem}
+.hwhen .t{font-size:.8rem;color:var(--muted)}
+.htitle{font-family:var(--serif);font-weight:500;font-size:1.08rem}
+@media (max-width:600px){.hcard{grid-template-columns:minmax(0,1fr);gap:8px}.hwhen{border-right:0;border-bottom:1px solid var(--line);padding:0 0 8px;flex-direction:row;gap:10px;align-items:baseline}}
+.cal .ev.hr{background:var(--rust-soft);color:var(--rust);font-weight:500}
 .ln.half{min-height:30px;border-bottom-style:dashed}
 .ln.half .h{opacity:.7}
 .ln:has(select.dur){grid-template-columns:52px 1fr auto}
@@ -428,6 +436,7 @@ const SCHEMA={
  trips:{name:'trip',f:[{k:'destination',l:'Destination',t:'text',req:1,full:1},{k:'start',l:'From',t:'date'},{k:'end',l:'To',t:'date'},{k:'status',l:'Status',t:'select',o:['Dreaming','Booked','Done']},{k:'budget',l:'Budget',t:'money'},{k:'stay',l:'Where we\'re staying',t:'text',full:1},{k:'itinerary',l:'Itinerary',t:'textarea',full:1},{k:'packing',l:'Packing list (one item per line)',t:'textarea',full:1}]},
  restaurants:{name:'restaurant',f:[{k:'name',l:'Restaurant',t:'text',req:1,full:1},{k:'cuisine',l:'Cuisine',t:'text'},{k:'area',l:'Area',t:'text'},{k:'price',l:'Price',t:'select',o:['£','££','£££','££££']},{k:'status',l:'Status',t:'select',o:['Want to try','Been','Favourite']},{k:'rating',l:'Rating',t:'rating'},{k:'notes',l:'What to order',t:'text',full:1}]},
  dates:{name:'date idea',f:[{k:'idea',l:'Date idea',t:'text',req:1,full:1},{k:'date',l:'Date',t:'date'},{k:'status',l:'Status',t:'select',o:['Idea','Planned','Done']},{k:'cost',l:'Rough cost',t:'money'},{k:'notes',l:'Notes',t:'textarea',full:1}]},
+ hearings:{name:'hearing',f:[{k:'matter',l:'Matter',t:'ref',ref:'matters',show:'name',req:1,full:1},{k:'type',l:'Type of hearing',t:'select',o:['Trial','Final hearing','Directions','CMC','Mention','FHDRA','DRA','Interim application','Appeal','Conference','Other']},{k:'status',l:'Status',t:'select',o:['Listed','Warned','Adjourned','Vacated','Done']},{k:'date',l:'Date',t:'date',req:1},{k:'time',l:'Time',t:'time'},{k:'length',l:'Time estimate',t:'select',o:['1 hour','2 hours','Half day','Full day']},{k:'until',l:'Runs until (multi-day)',t:'date'},{k:'court',l:'Court',t:'text'},{k:'room',l:'Courtroom',t:'text'},{k:'judge',l:'Judge',t:'text'},{k:'papersDue',l:'Papers due',t:'date'},{k:'skeletonDue',l:'Skeleton due',t:'date'},{k:'notes',l:'Notes (parties, what to bring, dial-in)',t:'textarea',full:1}]},
  matters:{name:'matter',f:[{k:'name',l:'Matter / case name',t:'text',req:1,full:1},{k:'solicitor',l:'Instructing solicitor',t:'text',full:1},{k:'court',l:'Court',t:'text'},{k:'ref',l:'Case reference',t:'text'}]},
  work:{name:'piece of work',f:[{k:'date',l:'Date',t:'date',req:1},{k:'matter',l:'Matter',t:'ref',ref:'matters',show:'name',req:1},{k:'work',l:'Work done',t:'textarea',req:1,full:1},{k:'basis',l:'Fee basis',t:'select',o:['Hourly','Brief fee','Refresher','Fixed fee']},{k:'hours',l:'Hours',t:'number',step:'0.1'},{k:'rate',l:'Hourly rate',t:'money'},{k:'amount',l:'Fee (blank = hours × rate)',t:'money'},{k:'status',l:'Status',t:'select',o:['Unbilled','Invoiced','Paid']},{k:'feeNote',l:'Fee note no.',t:'text'}]},
  fees:{name:'fee note',f:[{k:'number',l:'Fee note / invoice no.',t:'text',req:1},{k:'matter',l:'Matter',t:'ref',ref:'matters',show:'name'},{k:'solicitor',l:'Sent to',t:'text'},{k:'sent',l:'Date sent',t:'date'},{k:'amount',l:'Amount',t:'money',req:1},{k:'paid',l:'Amount paid',t:'money'},{k:'status',l:'Status',t:'select',o:['Outstanding','Part paid','Paid','Written off']},{k:'file',l:'Upload the invoice (PDF or image)',t:'file',full:1},{k:'notes',l:'Notes',t:'text',full:1}]},
@@ -553,7 +562,7 @@ async function sync(){
    const rev=G.rev,snap=JSON.stringify(db);
    const res=G.fileId?await updateFile(G.fileId,snap,'application/json'):await createFile(DATA,snap,'application/json');
    G.fileId=res.id;G.version=res.version;G.base=JSON.parse(snap);G.syncedRev=rev}
-  await persist();setStatus(dirty()?'Syncing…':'Synced');calSoon()
+  await persist();setStatus(dirty()?'Syncing…':'Synced');calSoon();maybeBackup()
  }catch(e){
   G.problem=e.code==='api_off'||e.code==='scope'?e.code:null;
   setStatus(e.code==='offline'?'Offline: saved on this device':e.code==='auth'?'Tap to reconnect':e.code==='api_off'?'Drive API is off: see Settings':e.code==='scope'?'Tap to allow Drive access':e.code==='busy'?'Google is busy: will retry':'Not synced yet: will retry');
@@ -594,6 +603,26 @@ async function boot(){
  setInterval(()=>{if(G.remoteWaiting&&!busy())refreshView()},3000);
  return {fresh,tk}}
 
+/* automatic backups: a full copy of the planner saved to her Drive every 14 days, newest 6 kept (about 3 months) */
+const BK={busy:false,list:null,keep:6,every:14};
+const bkName=()=>`sadhana-backup-${today()}.json`;
+async function listBackups(){const q=encodeURIComponent("name contains 'sadhana-backup-' and trashed=false");
+ const j=await (await api(`${DRIVE}/files?spaces=appDataFolder&q=${q}&orderBy=createdTime desc&fields=files(id,name,createdTime,size)&pageSize=100`)).json();
+ return (j.files||[]).sort((a,b)=>(a.createdTime||a.name)<(b.createdTime||b.name)?1:-1)}
+async function makeBackup(){await createFile(bkName(),JSON.stringify({app:'sadhana',at:new Date().toISOString(),db}),'application/json');
+ db.lastBackup=today();G.rev++;await persist();
+ try{const all=await listBackups();for(const f of all.slice(BK.keep)){try{await api(`${DRIVE}/files/${f.id}`,{method:'DELETE'})}catch(e){}}BK.list=all.slice(0,BK.keep)}catch(e){}
+ sync()}
+async function maybeBackup(){if(BK.busy||!tokenOk())return;const last=db.lastBackup;if(last&&diffDays(last,today())<BK.every)return;
+ BK.busy=true;try{await makeBackup()}catch(e){console.warn('Backup failed',e)}BK.busy=false}
+function backupNote(){const last=db.lastBackup;
+ if(!configured()||!(tokenOk()||ls.get('sadhana.signedIn')))return 'Sign in with Google to turn on automatic backups.';
+ return `A full copy of your planner is saved to your Google Drive every two weeks, and the last ${BK.keep} are kept. ${last?`Last backup: <b>${fFull(last)}</b>. Next: around ${fFull(addDays(last,BK.every))}.`:'The first one will be made shortly.'}`}
+async function restoreBackup(id){const r=await (await api(`${DRIVE}/files/${id}?alt=media`)).json();if(!r||!r.db)throw new Error('bad');
+ const keepFiles={...(db.driveFiles||{}),...(r.db.driveFiles||{})};db=r.db;db.driveFiles=keepFiles;ensure();save();applyTheme();render()}
+function bkLabel(f){const t=f.createdTime&&!isNaN(Date.parse(f.createdTime))?new Date(f.createdTime):null;const d=(f.name.match(/\d{4}-\d{2}-\d{2}/)||[''])[0];
+ return t?`${fFull(iso(t))}, ${pad(t.getHours())}:${pad(t.getMinutes())}`:(d?fFull(d):esc(f.name))}
+
 /* ---------- Google Calendar: a "Sadhana" calendar she can see in Apple Calendar, plus her own events shown here ----------
    - Writes: events, birthdays (yearly), seva due dates, trips and planned dates go into one calendar called "Sadhana".
      Each item always gets the same event id, so two devices never create duplicates, and removed items are deleted.
@@ -604,8 +633,8 @@ const calGranted=()=>tokenOk()&&(G.scopes||'').includes('calendar.app.created');
 const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('calendar.events.readonly')&&(G.scopes||'').includes('calendar.calendarlist.readonly');
 const C={calId:null,list:null,busy:false,again:false,timer:null,last:0,ext:{},extAt:{},loading:{},error:null,pushed:0};
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London'}catch(e){return 'Europe/London'}})();
-const calDefaults=()=>({events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,todos:false});
-const calAlerts=()=>({timed:'10',bday:'day',allday:'eve',...(db.settings.gcalAlerts||{})});
+const calDefaults=()=>({hearings:true,events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,todos:false});
+const calAlerts=()=>({hearing:'1440,60',timed:'10',bday:'day',allday:'eve',...(db.settings.gcalAlerts||{})});
 const calWhat=()=>({...calDefaults(),...(db.settings.gcalWhat||{})});
 const hexId=s=>'sd'+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,'0')).join('');
 const strHash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
@@ -630,10 +659,21 @@ function wanted(){const w=calWhat(),out={};const tz=TZ;
    const ks=Object.keys(sc).filter(k=>/^\d{2}:\d{2}$/.test(k)&&(sc[k]||'').trim()).sort();
    ks.forEach((k,i)=>{const st=mins(k),nx=i+1<ks.length?mins(ks[i+1]):Infinity;const len=+(((db.days[d]||{}).dur||{})[k])||0;const en=Math.min(len?st+len:Math.min(st+(k.endsWith(':30')?30:60),nx),23*60+59);
     out['sc:'+d+':'+k.replace(':','')]={summary:sc[k].trim(),start:{dateTime:`${d}T${k}:00`,timeZone:tz},end:{dateTime:`${d}T${hm(en)}:00`,timeZone:tz},description:'From your Sadhana day plan'}})}}
+ if(w.hearings)for(const h of db.hearings||[]){if(!h.date||h.status==='Vacated'||h.status==='Adjourned')continue;const m=(db.matters||[]).find(x=>x.id===h.matter)||{};const nm=m.name||'Hearing';
+  const desc=[h.type,[h.court,h.room].filter(Boolean).join(', '),h.judge?'Judge: '+h.judge:'',m.solicitor?'Instructed by '+m.solicitor:'',h.notes].filter(Boolean).join('\n');
+  let body;if(h.until&&h.until>h.date)body=allDay(h.date,dayAfter(h.until),`⚖️ ${h.type||'Hearing'}: ${nm}`,{description:desc});
+  else if(h.time&&/^\d{1,2}:\d{2}$/.test(h.time)){const [hh,mm]=h.time.split(':').map(Number);const len={'2 hours':120,'Half day':180,'Full day':360}[h.length]||60;const st=hh*60+mm,en=Math.min(st+len,23*60+59);
+   body={summary:`⚖️ ${nm}${h.type?' ('+h.type+')':''}`,start:{dateTime:`${h.date}T${pad(hh)}:${pad(mm)}:00`,timeZone:tz},end:{dateTime:`${h.date}T${pad(Math.floor(en/60))}:${pad(en%60)}:00`,timeZone:tz},description:desc}}
+  else body=allDay(h.date,null,`⚖️ ${nm}${h.type?' ('+h.type+')':''}`,{description:desc});
+  if(h.court)body.location=[h.court,h.room].filter(Boolean).join(', ');body.hearing=1;out['hr:'+h.id]=body;
+  if(h.status==='Done')continue;
+  if(h.papersDue)out['hp:'+h.id]=allDay(h.papersDue,null,`📚 Papers due: ${nm}`);
+  if(h.skeletonDue)out['hs:'+h.id]=allDay(h.skeletonDue,null,`✍️ Skeleton due: ${nm}`)}
  if(w.todos)for(const t of db.todos||[]){if(!t.due||t.done||!t.title)continue;out['td:'+t.id]=allDay(t.due,null,`☑️ Due: ${t.title}`)}
  const al=calAlerts();
  for(const k in out){const b=out[k];let mins=[];
-  if(b.start.dateTime){if(+al.timed)mins=[+al.timed]}
+  if(b.hearing){delete b.hearing;mins=String(al.hearing).split(',').map(Number).filter(Boolean)}
+  else if(b.start.dateTime){if(+al.timed)mins=[+al.timed]}
   else if(k.startsWith('bd:')){mins=al.bday==='week'?[10980,900]:al.bday==='day'?[900]:[]}
   else mins=al.allday==='eve'?[360]:al.allday==='morn'?[900]:al.allday==='two'?[2340]:[];
   b.reminders={useDefault:false,overrides:mins.map(m=>({method:'popup',minutes:m}))};
@@ -698,9 +738,10 @@ function calCard(){const w=calWhat(),on=!!db.settings.gcal;
  return `<section class="card stack" style="gap:14px"><h3>Calendar</h3><p class="muted" id="calnote">${calNote()}</p>
   ${!on?`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Connect Google Calendar</button></div>`
   :`${calGranted()?'':`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Allow calendar access</button></div>`}
-   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('schedule','Day plan schedule')}${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('todos','To-do due dates')}</div>
+   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('hearings','Court diary (hearings, papers and skeleton dates)')}${box('schedule','Day plan schedule')}${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('todos','To-do due dates')}</div>
    <div class="rule"></div><p class="small muted">Alerts on your iPhone and Mac (through Apple Calendar):</p>
    <div class="stack" style="gap:10px">
+    ${alertSel('hearing','Hearings',[['0','No alert'],['60','1 hour before'],['120','2 hours before'],['1440','The day before'],['1440,60','The day before and 1 hour before']])}
     ${alertSel('timed','Schedule and timed events',[['0','No alert'],['5','5 minutes before'],['10','10 minutes before'],['15','15 minutes before'],['30','30 minutes before'],['60','1 hour before']])}
     ${alertSel('bday','Birthdays',[['off','No alert'],['day','Day before at 9am'],['week','A week before and the day before']])}
     ${alertSel('allday','Seva, trips, date nights and to-dos',[['off','No alert'],['eve','Day before at 6pm'],['morn','Day before at 9am'],['two','Two days before at 9am']])}
@@ -769,6 +810,7 @@ function seed(){
   trips:[{id:uid(),destination:'Lisbon',start:addDays(t,45),end:addDays(t,49),status:'Booked',budget:900,stay:'Apartment in Príncipe Real',itinerary:'Day 1: Arrive, sunset at a miradouro\nDay 2: Sintra\nDay 3: Belém and pastries',packing:'Passport\nLinen trousers\nTrainers\nCamera\nChargers',packed:['Passport'],ex}],
   restaurants:[{id:uid(),name:'Neighbourhood trattoria (example)',cuisine:'Italian',area:'Islington',price:'££',status:'Favourite',rating:5,notes:'Cacio e pepe',ex},{id:uid(),name:'Dim sum spot (example)',cuisine:'Cantonese',area:'Soho',price:'££',status:'Want to try',ex}],
   dates:[{id:uid(),idea:'Picnic on Primrose Hill',status:'Idea',cost:25,ex},{id:uid(),idea:'Pottery class for two',status:'Planned',date:addDays(t,9),cost:90,ex}],
+  hearings:[{id:uid(),matter:m1,type:'Trial',status:'Listed',date:addDays(t,3),time:'10:00',length:'Full day',court:'Central London County Court',room:'Court 12',papersDue:addDays(t,1),skeletonDue:addDays(t,2),notes:'Bring authorities bundle.',ex},{id:uid(),matter:m2,type:'Directions',status:'Listed',date:addDays(t,9),time:'14:00',length:'1 hour',court:'Family Court (remote)',notes:'CVP link in email.',ex}],
   matters:[{id:m1,name:'Smith v Jones (example)',solicitor:'Example & Co LLP',court:'Central London County Court',ref:'K00CL123',ex},{id:m2,name:'Re Hartley (example)',solicitor:'Sample Law',court:'Family Court',ex}],
   work:[
    {id:uid(),date:addDays(t,-1),matter:m1,work:'Brief fee: trial preparation and skeleton argument',basis:'Brief fee',amount:750,status:'Unbilled',ex},
@@ -800,13 +842,13 @@ function setPath(path,val){const ks=path.split('.');let o=db;for(let i=0;i<ks.le
 function getPath(path){return path.split('.').reduce((o,k)=>o==null?undefined:o[k],db)}
 
 /* ---------- ui state ---------- */
-const S={view:'home',sub:{planning:'day',growth:'habits',health:'plan',finance:'overview',org:'calendar',bar:'log',sat:'sabha'},date:today(),week:monday(today()),month:ymOf(today()),year:today().slice(0,4),homeTab:'planned',shut:{},f:{todo:'open',tag:'',q:'',txMonth:ymOf(today()),proj:null,rest:'All',seva:'Open',wl:'All'},calMonth:ymOf(today()),hMonth:ymOf(today()),moodYear:today().slice(0,4)};
+const S={view:'home',sub:{planning:'day',growth:'habits',health:'plan',finance:'overview',org:'calendar',bar:'diary',sat:'sabha'},date:today(),week:monday(today()),month:ymOf(today()),year:today().slice(0,4),homeTab:'planned',shut:{},f:{todo:'open',tag:'',q:'',txMonth:ymOf(today()),proj:null,rest:'All',seva:'Open',wl:'All',hd:'Upcoming'},calMonth:ymOf(today()),hMonth:ymOf(today()),moodYear:today().slice(0,4)};
 const NAV=[['home','Home'],['planning','Planning'],['projects','Projects & to-dos'],['growth','Personal growth'],['health','Health & fitness'],['finance','Finance'],['org','Organisation'],['bar','Barrister billing'],['sat','Satsang'],['settings','Settings']];
 const NICON={home:'home',planning:'plan',projects:'proj',growth:'growth',health:'health',finance:'fin',org:'org',bar:'bar',sat:'sat',settings:'set'};
 
 /* ---------- small components ---------- */
 const pill=(t,tone='')=>t?`<span class="pill ${tone}">${esc(t)}</span>`:'';
-const TONE={'Non-negotiable':'rust','High':'clay','Normal':'','Low':'plain','Not started':'plain','In progress':'green','On hold':'clay','Done':'green','Draft':'plain','Sent':'clay','Paid':'green','Overdue':'rust','Outstanding':'clay','Part paid':'clay','Written off':'plain','Unbilled':'rust','Invoiced':'clay','Want to try':'clay','Been':'','Favourite':'green','Idea':'plain','Planned':'clay','Dreaming':'plain','Booked':'green','Call':'clay','Action':'green','Income':'green','Expense':''};
+const TONE={'Listed':'clay','Warned':'clay','Adjourned':'plain','Vacated':'plain','Non-negotiable':'rust','High':'clay','Normal':'','Low':'plain','Not started':'plain','In progress':'green','On hold':'clay','Done':'green','Draft':'plain','Sent':'clay','Paid':'green','Overdue':'rust','Outstanding':'clay','Part paid':'clay','Written off':'plain','Unbilled':'rust','Invoiced':'clay','Want to try':'clay','Been':'','Favourite':'green','Idea':'plain','Planned':'clay','Dreaming':'plain','Booked':'green','Call':'clay','Action':'green','Income':'green','Expense':''};
 const sp=t=>pill(t,TONE[t]||'');
 const tabs=(key,list)=>`<div class="tabs" role="tablist">${list.map(([v,l,i])=>`<button role="tab" class="${S.sub[key]===v?'on':''}" data-act="sub" data-k="${key}" data-v="${v}">${i?ic(i):''}${esc(l)}</button>`).join('')}</div>`;
 const addBtn=(col,label,preset)=>`<button class="btn primary" data-act="add" data-col="${col}"${preset?` data-preset='${esc(JSON.stringify(preset))}'`:''}>${ic('plus')}${esc(label)}</button>`;
@@ -872,12 +914,15 @@ function vHome(){
      ${projDue.map(p=>it(`${esc(p.name)} (project) is due`,'r')).join('')}
      ${it(`${habPending} daily habit${habPending===1?'':'s'} pending`,'g')}
      ${evToday.map(e=>it(`${esc(e.title)}${e.time?' at '+e.time:''}`,'g')).join('')}
+     ${db.hearings.filter(h=>hLive(h)&&h.date<=t&&hEnd(h)>=t).map(h=>it(`⚖️ ${esc(hName(h))}${h.time&&h.date===t?' at '+hLabel(h.time):''}${h.court?', '+esc(h.court):''}`,'r')).join('')}
+     ${db.hearings.filter(h=>hLive(h)).flatMap(h=>[['Papers',h.papersDue],['Skeleton',h.skeletonDue]].filter(x=>x[1]===t).map(x=>it(`${x[0]} due today: ${esc(hName(h))}`,'r'))).join('')}
      ${extOn(t).map(e=>it(`📅 ${esc(e.title)}${e.time?' at '+e.time:''}`,'g')).join('')}
      ${bdays.filter(b=>b.next===t).map(b=>it(`It's ${esc(b.name)}'s birthday`,'r')).join('')}
      ${sevaDue?it(`${sevaDue} seva item${sevaDue===1?'':'s'} due`):''}
      <div class="sec">Next 7 days</div>
      ${it(`${L.soon.length} task${L.soon.length===1?'':'s'} upcoming`)}
      ${ev7.map(e=>it(`${esc(e.title)}, ${fShort(e.date)}`,'g')).join('')}
+     ${db.hearings.filter(h=>hLive(h)&&h.date>t&&h.date<=addDays(t,7)).sort((a,b)=>a.date<b.date?-1:1).map(h=>it(`⚖️ ${esc(hName(h))}, ${fShort(h.date)}${h.time?' '+hLabel(h.time):''}`,'r')).join('')}
      ${[1,2,3,4,5,6,7].flatMap(i=>extOn(addDays(t,i))).slice(0,8).map(e=>it(`📅 ${esc(e.title)}, ${fShort(e.date)}${e.time?' '+e.time:''}`,'g')).join('')}
      ${bdays.filter(b=>b.next!==t).map(b=>it(`${esc(b.name)}'s birthday, ${fShort(b.next)}`,'r')).join('')}
      ${aged?it(`${aged} fee note${aged===1?'':'s'} over 90 days unpaid`,'r'):''}
@@ -1072,10 +1117,10 @@ function fInv(){const t=today();const inv=db.invoices.map(i=>({...i,status:(i.st
 function vOrg(){const s=S.sub.org;
  return head('Organisation','Calendar, birthdays, outfits, trips, restaurants and date nights.')+tabs('org',[['calendar','Event calendar'],['birthdays','Birthdays'],['outfits','Outfit planner'],['travel','Travel'],['restaurants','Restaurants'],['dates','Date planner']])+({calendar:oCal,birthdays:oBday,outfits:oOutfits,travel:oTravel,restaurants:oRest,dates:oDates}[s])()}
 function oCal(){const m=S.calMonth,first=m+'-01',start=monday(first),t=today();const cells=[];for(let i=0;i<42;i++){cells.push(addDays(start,i))}const rows=cells[35].slice(0,7)===m?42:35;
- const items=d=>{const a=[];db.events.filter(e=>e.date===d).forEach(e=>a.push(`<button class="ev" data-act="edit" data-col="events" data-id="${e.id}">${e.time?e.time+' ':''}${esc(e.title)}</button>`));db.birthdays.filter(b=>b.date&&b.date.slice(5)===d.slice(5)).forEach(b=>a.push(`<button class="ev b" data-act="edit" data-col="birthdays" data-id="${b.id}">${esc(b.name)}'s birthday</button>`));db.trips.filter(tr=>tr.start&&tr.start<=d&&(tr.end||tr.start)>=d).forEach(tr=>a.push(`<button class="ev t" data-act="edit" data-col="trips" data-id="${tr.id}">${esc(tr.destination)}</button>`));db.dates.filter(x=>x.date===d).forEach(x=>a.push(`<button class="ev dt" data-act="edit" data-col="dates" data-id="${x.id}">${esc(x.idea)}</button>`));extOn(d).forEach(x=>a.push(`<span class="ev x" title="${esc(x.cal)}">${x.time?x.time+' ':''}${esc(x.title)}</span>`));return a.join('')};
+ const items=d=>{const a=[];db.events.filter(e=>e.date===d).forEach(e=>a.push(`<button class="ev" data-act="edit" data-col="events" data-id="${e.id}">${e.time?e.time+' ':''}${esc(e.title)}</button>`));db.birthdays.filter(b=>b.date&&b.date.slice(5)===d.slice(5)).forEach(b=>a.push(`<button class="ev b" data-act="edit" data-col="birthdays" data-id="${b.id}">${esc(b.name)}'s birthday</button>`));db.trips.filter(tr=>tr.start&&tr.start<=d&&(tr.end||tr.start)>=d).forEach(tr=>a.push(`<button class="ev t" data-act="edit" data-col="trips" data-id="${tr.id}">${esc(tr.destination)}</button>`));db.hearings.filter(h=>hLive(h)&&h.date<=d&&hEnd(h)>=d).forEach(h=>a.push(`<button class="ev hr" data-act="edit" data-col="hearings" data-id="${h.id}">⚖️ ${h.time&&h.date===d?h.time+' ':''}${esc(hName(h))}</button>`));db.dates.filter(x=>x.date===d).forEach(x=>a.push(`<button class="ev dt" data-act="edit" data-col="dates" data-id="${x.id}">${esc(x.idea)}</button>`));extOn(d).forEach(x=>a.push(`<span class="ev x" title="${esc(x.cal)}">${x.time?x.time+' ':''}${esc(x.title)}</span>`));return a.join('')};
  return `<div class="cardhead">${navBar('navCal',fMonth(m))}${addBtn('events','New event',{date:t})}</div>
  <div class="cal">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="dh">${d}</div>`).join('')}${cells.slice(0,rows).map(d=>`<div class="dc ${ymOf(d)!==m?'out':''} ${d===t?'today':''}" data-act="calDay" data-v="${d}" role="button" tabindex="0" aria-label="Add event on ${fFull(d)}"><span class="d">${parse(d).getDate()}</span>${items(d)}</div>`).join('')}</div>
- <div class="legend"><span><i style="background:var(--sage-soft)"></i>Event</span><span><i style="background:var(--clay-soft)"></i>Birthday</span><span><i style="background:var(--sand)"></i>Trip</span><span><i style="background:var(--rust-soft)"></i>Date night</span></div>`}
+ <div class="legend"><span><i style="background:var(--sage-soft)"></i>Event</span><span><i style="background:var(--clay-soft)"></i>Birthday</span><span><i style="background:var(--sand)"></i>Trip</span><span><i style="background:var(--rust-soft)"></i>Date night or hearing</span></div>`}
 function oBday(){const t=today();const bs=db.birthdays.map(b=>({...b,next:nextBday(b.date)})).sort((a,b)=>a.next<b.next?-1:1);
  return `<div class="cardhead"><p class="muted">Sorted by who's next.</p>${addBtn('birthdays','Add birthday')}</div>
  ${bs.length?`<div class="cards">${bs.map(b=>{const n=diffDays(t,b.next);const age=b.yearKnown?(+b.next.slice(0,4))-(+b.date.slice(0,4)):null;return `<button class="ic" data-act="edit" data-col="birthdays" data-id="${b.id}"><span class="eyebrow">${fShort(b.next)}</span><span class="t">${esc(b.name)}</span><span class="row">${pill(n===0?'Today':n===1?'Tomorrow':`In ${n} days`,n<=14?'rust':'plain')}${age?pill('Turning '+age,'green'):''}</span>${b.gift?`<span class="x">Gift ideas: ${esc(b.gift)}</span>`:''}</button>`}).join('')}</div>`:'<div class="empty">No birthdays yet.</div>'}`}
@@ -1103,8 +1148,30 @@ function vBar(){const s=S.sub.bar,t=today(),ty=taxYearStart();
  const paidTY=sum(db.fees.filter(f=>(f.status==='Paid'||f.status==='Part paid')&&(f.paidOn||f.sent||'')>=ty),f=>f.paid||(f.status==='Paid'?f.amount:0));
  const hrs=sum(db.work.filter(w=>w.date>=ty),w=>w.hours);
  return head('Barrister billing','Log every piece of work, upload fee notes, and see what is owed.',`${addBtn('work','Log work',{date:t,basis:'Hourly',rate:db.settings.rate,status:'Unbilled'})}<button class="btn" data-act="add" data-col="fees" data-preset='${esc(JSON.stringify({sent:t,status:'Outstanding'}))}'>${ic('file')}Upload fee note</button>`)+
- `<div class="grid4"><div class="stat"><span class="l">Unbilled work</span><span class="v">${money0(unbilled)}</span><span class="s num">${db.work.filter(w=>w.status==='Unbilled').length} items to invoice</span></div><div class="stat"><span class="l">Outstanding fees</span><span class="v">${money0(outstanding)}</span><span class="s num">${open.length} fee notes</span></div><div class="stat ${aged.length?'warn':''}"><span class="l">Over 90 days</span><span class="v">${money0(agedAmt)}</span><span class="s num">${aged.length} to chase</span></div><div class="stat"><span class="l">Received this tax year</span><span class="v">${money0(paidTY)}</span><span class="s num">Since ${fFull(ty)} · ${hrs.toFixed(1)} hrs logged</span></div></div>`+
- tabs('bar',[['log','Work log'],['fees','Fee notes & invoices'],['matters','Matters']])+({log:bLog,fees:bFees,matters:bMatters}[s])()}
+ (s==='diary'?'':`<div class="grid4"><div class="stat"><span class="l">Unbilled work</span><span class="v">${money0(unbilled)}</span><span class="s num">${db.work.filter(w=>w.status==='Unbilled').length} items to invoice</span></div><div class="stat"><span class="l">Outstanding fees</span><span class="v">${money0(outstanding)}</span><span class="s num">${open.length} fee notes</span></div><div class="stat ${aged.length?'warn':''}"><span class="l">Over 90 days</span><span class="v">${money0(agedAmt)}</span><span class="s num">${aged.length} to chase</span></div><div class="stat"><span class="l">Received this tax year</span><span class="v">${money0(paidTY)}</span><span class="s num">Since ${fFull(ty)} · ${hrs.toFixed(1)} hrs logged</span></div></div>`)+
+ tabs('bar',[['diary','Court diary'],['log','Work log'],['fees','Fee notes & invoices'],['matters','Matters']])+({diary:bDiary,log:bLog,fees:bFees,matters:bMatters}[s])()}
+const hLive=h=>h.status!=='Vacated'&&h.status!=='Adjourned';
+const hEnd=h=>h.until&&h.until>h.date?h.until:h.date;
+const hName=h=>nameOf('matters',h.matter)||'Hearing';
+function hDue(label,d,t){if(!d)return '';const n=diffDays(t,d);const txt=n<0?`${label} was due ${fShort(d)}`:n===0?`${label} due today`:n===1?`${label} due tomorrow`:`${label} due ${fShort(d)}`;return pill(txt,n<=1?'rust':n<=3?'clay':'plain')}
+function bDiary(){const t=today(),f=S.f.hd;
+ let rows=db.hearings.slice();
+ if(f==='Upcoming')rows=rows.filter(h=>hEnd(h)>=t&&h.status!=='Done').sort((a,b)=>(a.date+(a.time||''))<(b.date+(b.time||''))?-1:1);
+ else if(f==='Past')rows=rows.filter(h=>hEnd(h)<t||h.status==='Done').sort((a,b)=>a.date<b.date?1:-1);
+ else rows.sort((a,b)=>a.date<b.date?1:-1);
+ const card=h=>{const m=byId('matters',h.matter)||{};const days=diffDays(t,h.date);const when=days===0?'Today':days===1?'Tomorrow':days>1&&days<7?DOW[(parse(h.date).getDay()+6)%7]:fFull(h.date);
+  const past=hEnd(h)<t||h.status==='Done';
+  return `<div class="card hcard ${hLive(h)?'':'muted'}" data-act="edit" data-col="hearings" data-id="${h.id}" role="button" tabindex="0">
+   <div class="hwhen"><span class="d">${when}</span><span class="t num">${h.time?hLabel(h.time):''}${h.until&&h.until>h.date?' to '+fShort(h.until):h.length?' · '+esc(h.length):''}</span></div>
+   <div class="hbody"><div class="row" style="gap:8px;flex-wrap:wrap"><b class="htitle">${esc(m.name||'Hearing')}</b>${sp(h.type)}${h.status&&h.status!=='Listed'?sp(h.status):''}</div>
+    <div class="small muted">${[h.court,h.room,h.judge].filter(Boolean).map(esc).join(' · ')||'Add the court'}${m.solicitor?' · '+esc(m.solicitor):''}</div>
+    ${!past&&hLive(h)?`<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${hDue('Papers',h.papersDue,t)}${hDue('Skeleton',h.skeletonDue,t)}</div>`:''}
+    ${h.notes?`<div class="small" style="margin-top:6px;white-space:pre-wrap">${esc(h.notes)}</div>`:''}
+    ${past&&h.status!=='Vacated'?`<div style="margin-top:8px"><button class="btn sm" data-act="add" data-col="work" data-preset='${esc(JSON.stringify({date:h.date,matter:h.matter,work:(h.type||'Hearing')+(h.court?' at '+h.court:''),basis:'Brief fee',status:'Unbilled'}))}'>${ic('plus')}Log the fee for this</button></div>`:''}
+   </div></div>`};
+ return `<div class="cardhead"><div class="row">${['Upcoming','Past','All'].map(o=>`<button class="chip ${f===o?'on':''}" data-act="filt" data-k="hd" data-v="${o}">${o}</button>`).join('')}</div>${addBtn('hearings','New hearing',{date:t,status:'Listed'})}</div>
+ <div class="stack" style="gap:12px;margin-top:12px">${rows.map(card).join('')||`<div class="empty">${f==='Upcoming'?'No hearings coming up.':'Nothing here yet.'}</div>`}</div>
+ <p class="small muted" style="margin-top:14px">Hearings, papers and skeleton dates go into your Sadhana calendar with alerts once Google Calendar is connected in Settings.</p>`}
 function bLog(){const f=S.f.wl;const rows=db.work.filter(w=>f==='All'||w.status===f).sort((a,b)=>a.date<b.date?1:-1);
  return `<div class="row">${['All','Unbilled','Invoiced','Paid'].map(o=>`<button class="chip ${f===o?'on':''}" data-act="filt" data-k="wl" data-v="${o}">${o}</button>`).join('')}</div>
  ${table('work',rows,[{l:'Date',f:w=>fShort(w.date)},{l:'Matter',t:1,f:w=>esc(nameOf('matters',w.matter))},{l:'Work done',f:w=>`<span style="display:block;max-width:40ch">${esc(w.work)}</span>`},{l:'Basis',k:'basis'},{l:'Hours',r:1,f:w=>w.hours?(+w.hours).toFixed(1):''},{l:'Status',f:w=>sp(w.status)+(w.feeNote?` <span class="muted small">${esc(w.feeNote)}</span>`:'')},{l:'Fee',r:1,f:w=>money(wAmount(w))}],'No work logged yet.')}`}
@@ -1143,7 +1210,9 @@ function vSettings(){const s=db.settings;
  <section class="card stack" style="gap:14px"><h3>Your data</h3>
   <p class="muted" id="syncnote">${syncNote()}</p>
   <div class="row">${configured()?(G.problem==='scope'?`<button class="btn primary gbtn" data-act="allowDrive">${GICON}Allow Drive access</button>`:'')+(tokenOk()?`<button class="btn" data-act="syncNow">Sync now</button><button class="btn ghost" data-act="signOut">Sign out on this device</button>`:`<button class="btn primary gbtn" data-act="signIn">${GICON}Sign in with Google</button>`):''}</div>
-  <p class="muted small">Download a backup now and then, including photos and uploaded invoices.</p>
+  <div class="rule"></div><h3>Backups</h3><p class="muted" id="bknote">${backupNote()}</p>
+  ${tokenOk()?`<div class="row"><button class="btn" data-act="backupNow">Back up now</button><button class="btn ghost" data-act="showBackups">${BK.list?'Refresh list':'See backups'}</button></div>${BK.list?`<div class="stack" style="gap:6px">${BK.list.map(f=>`<div class="row" style="justify-content:space-between"><span class="small">${bkLabel(f)}</span><button class="btn sm ghost" data-act="restoreBk" data-id="${esc(f.id)}">Restore</button></div>`).join('')||'<p class="small muted">No backups yet.</p>'}</div>`:''}`:''}
+  <p class="muted small">You can also download a copy to keep yourself, including photos and uploaded invoices.</p>
   <div class="row"><button class="btn primary" data-act="export">Download backup</button><button class="btn" data-act="import">Restore from backup</button></div>
   <div class="rule"></div>
   ${db.examples?`<p class="muted">Example entries are still showing.</p><div><button class="btn" data-act="clearEx">Remove all examples</button></div>`:''}
@@ -1238,6 +1307,9 @@ const A={
  closeProject:()=>{S.f.proj=null;render()},
  pack:e=>{const tr=byId('trips',e.dataset.id);tr.packed=tr.packed||[];const v=e.dataset.v,i=tr.packed.indexOf(v);if(i>=0)tr.packed.splice(i,1);else tr.packed.push(v);save();render()},
  signIn:()=>signIn(false),
+ backupNow:async()=>{toast('Backing up');try{await makeBackup();toast('Backup saved to your Drive');render()}catch(e){toast('Backup failed: check you are online')}},
+ showBackups:async()=>{try{BK.list=(await listBackups()).slice(0,BK.keep);render()}catch(e){toast('Could not load backups')}},
+ restoreBk:async e=>{if(!e.dataset.sure){e.dataset.sure=1;e.textContent='Tap again to replace everything with this backup';return}try{await restoreBackup(e.dataset.id);toast('Backup restored')}catch(x){toast('That backup could not be restored')}},
  syncNow:()=>{sync();toast('Syncing')},
  signOut:async()=>{signOut();await persist();render();toast('Signed out on this device')},
  syncTap:()=>{if(G.problem==='scope')signIn(false,true);else if(G.problem==='api_off'){S.view='settings';render()}else if(configured()&&!tokenOk())signIn(false);else sync()},
