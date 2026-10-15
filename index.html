@@ -335,6 +335,8 @@ tbody tr.nohover:hover td{background:none}
   h1{font-size:1.7rem}
 }
 .syncpill{display:none}
+.quickadd{display:flex;flex-direction:column;gap:8px;padding:10px;border:1px dashed var(--sage);border-radius:12px;background:var(--sage-soft);min-width:0;flex:none}
+.row>.quickadd{flex:1 1 220px}
 .timer{padding:16px 20px;margin-bottom:18px}
 .timer.running{border-color:var(--sage);box-shadow:0 0 0 1px var(--sage),var(--shadow)}
 .timer.paused,.timer.stopped{border-color:var(--clay)}
@@ -837,7 +839,7 @@ const tmHours=ms=>Math.max(0.1,Math.ceil(ms/360000)/10); /* 6-minute units, roun
 function tmState(t){return !t?'idle':t.stopAt?'stopped':t.pausedAt?'paused':'running'}
 function timerCard(compact){const t=TM(),st=tmState(t);
  const matters=db.matters||[];
- const msel=`<select class="field" id="tm_matter" ${st==="idle"?"":`data-bind="timer.matter"`} aria-label="Matter" style="min-width:0;flex:1 1 200px">${'<option value="">Choose a matter (optional)</option>'+matters.map(m=>`<option value="${m.id}" ${t&&t.matter===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select>`;
+ const msel=`<select class="field" id="tm_matter" data-newref="matters" ${st==="idle"?"":`data-bind="timer.matter"`} aria-label="Matter" style="min-width:0;flex:1 1 200px">${'<option value="">Choose a matter (optional)</option>'+matters.map(m=>`<option value="${m.id}" ${t&&t.matter===m.id?'selected':''}>${esc(m.name)}</option>`).join('')+quickOpt('matters')}</select>`;
  if(st==='idle')return `<section class="card timer idle"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><span class="tmicon">⏱</span><b style="font-family:var(--serif);font-weight:500;font-size:1.05rem">Time tracker</b>${msel}<button class="btn primary" data-act="tmStart">Start timer</button></div></section>`;
  const ms=tmElapsed(t);
  return `<section class="card timer ${st}"><div class="row" style="gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">
@@ -850,6 +852,24 @@ setInterval(tmTick,1000);
 function tmLog(){const t=TM();if(!t)return;if(!t.stopAt){if(t.pausedAt){t.stopAt=t.pausedAt}else t.stopAt=Date.now()}save();
  const ms=tmElapsed(t),d=iso(new Date(t.start));
  openForm('work',null,{date:d,matter:t.matter||'',work:t.note||'',basis:'Hourly',hours:tmHours(ms),rate:db.settings.rate,status:'Unbilled'});MODAL.fromTimer=true}
+
+/* ---------- add a matter (or project) right where you're choosing one ---------- */
+const QUICK={matters:{label:'+ Add a new matter…',name:'Matter or case name',extra:'Instructing solicitor (optional)',make:(n,x)=>({id:'m_'+uid(),name:n,solicitor:x})},
+ projects:{label:'+ Add a new project…',name:'Project name',extra:'',make:n=>({id:'p_'+uid(),name:n,status:'In progress'})}};
+const quickOpt=ref=>QUICK[ref]?`<option value="__new">${QUICK[ref].label}</option>`:'';
+function quickAdd(sel){const ref=sel.dataset.newref,q=QUICK[ref];if(!q)return;const prev=sel.dataset.prev||'';
+ const box=document.createElement('div');box.className='quickadd';
+ box.innerHTML=`<input class="field qa-name" placeholder="${q.name}" aria-label="${q.name}">${q.extra?`<input class="field qa-extra" placeholder="${q.extra}" aria-label="${q.extra}">`:''}<div class="row" style="gap:8px"><button type="button" class="btn sm primary qa-add">Add</button><button type="button" class="btn sm ghost qa-cancel">Cancel</button></div>`;
+ sel.insertAdjacentElement('afterend',box);sel.style.display='none';const nm=box.querySelector('.qa-name');nm.focus();
+ const done=id=>{box.remove();sel.style.display='';sel.value=id||prev;sel.dataset.prev=sel.value;if(sel.dataset.bind){setPath(sel.dataset.bind,sel.value);save()}};
+ const add=()=>{const n=nm.value.trim();if(!n){nm.focus();return}const x=(box.querySelector('.qa-extra')||{}).value||'';const item=q.make(n,x.trim());db[ref].push(item);save();
+  for(const other of document.querySelectorAll(`select[data-newref="${ref}"]`)){const o=document.createElement('option');o.value=item.id;o.textContent=n;other.insertBefore(o,other.querySelector('option[value="__new"]'))}
+  done(item.id);toast(`${n} added`)};
+ box.querySelector('.qa-add').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();add()});
+ box.querySelector('.qa-cancel').addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();done('')});
+ box.addEventListener('keydown',ev=>{if(ev.key==='Enter'){ev.preventDefault();ev.stopPropagation();add()}else if(ev.key==='Escape'){ev.preventDefault();ev.stopPropagation();done('')}})}
+document.addEventListener('focusin',ev=>{const t=ev.target;if(t.dataset&&t.dataset.newref)t.dataset.prev=t.value});
+document.addEventListener('change',ev=>{const t=ev.target;if(t.dataset&&t.dataset.newref&&t.value==='__new'){ev.stopImmediatePropagation();quickAdd(t)}},true);
 
 /* ---------- seed (clearly marked examples) ---------- */
 function seed(){
@@ -1249,7 +1269,7 @@ function vBar(){const s=S.sub.bar,t=today(),ty=taxYearStart();
  const aged=open.filter(f=>f.sent&&diffDays(f.sent,t)>90);const agedAmt=sum(aged,f=>(+f.amount||0)-(+f.paid||0));
  const paidTY=sum(db.fees.filter(f=>(f.status==='Paid'||f.status==='Part paid')&&(f.paidOn||f.sent||'')>=ty),f=>f.paid||(f.status==='Paid'?f.amount:0));
  const hrs=sum(db.work.filter(w=>w.date>=ty),w=>w.hours);
- return head('Barrister billing','Log every piece of work, upload fee notes, and see what is owed.',`${addBtn('work','Log work',{date:t,basis:'Hourly',rate:db.settings.rate,status:'Unbilled'})}<button class="btn" data-act="add" data-col="fees" data-preset='${esc(JSON.stringify({sent:t,status:'Outstanding'}))}'>${ic('file')}Upload fee note</button>`)+timerCard()+
+ return head('Barrister billing','Log every piece of work, upload fee notes, and see what is owed.',`${addBtn('work','Log work',{date:t,basis:'Hourly',rate:db.settings.rate,status:'Unbilled'})}<button class="btn" data-act="add" data-col="fees" data-preset='${esc(JSON.stringify({sent:t,status:'Outstanding'}))}'>${ic('file')}Upload fee note</button>${addBtn('matters','New matter')}`)+timerCard()+
  (s==='diary'?'':`<div class="grid4"><div class="stat"><span class="l">Unbilled work</span><span class="v">${money0(unbilled)}</span><span class="s num">${db.work.filter(w=>w.status==='Unbilled').length} items to invoice</span></div><div class="stat"><span class="l">Outstanding fees</span><span class="v">${money0(outstanding)}</span><span class="s num">${open.length} fee notes</span></div><div class="stat ${aged.length?'warn':''}"><span class="l">Over 90 days</span><span class="v">${money0(agedAmt)}</span><span class="s num">${aged.length} to chase</span></div><div class="stat"><span class="l">Received this tax year</span><span class="v">${money0(paidTY)}</span><span class="s num">Since ${fFull(ty)} · ${hrs.toFixed(1)} hrs logged</span></div></div>`)+
  tabs('bar',[['diary','Court diary'],['log','Work log'],['fees','Fee notes & invoices'],['matters','Matters']])+({diary:bDiary,log:bLog,fees:bFees,matters:bMatters}[s])()}
 const hLive=h=>h.status!=='Vacated'&&h.status!=='Adjourned';
@@ -1279,7 +1299,7 @@ function bLog(){const f=S.f.wl;const rows=db.work.filter(w=>f==='All'||w.status=
  ${table('work',rows,[{l:'Date',f:w=>fShort(w.date)},{l:'Matter',t:1,f:w=>esc(nameOf('matters',w.matter))},{l:'Work done',f:w=>`<span style="display:block;max-width:40ch">${esc(w.work)}</span>`},{l:'Basis',k:'basis'},{l:'Hours',r:1,f:w=>w.hours?(+w.hours).toFixed(1):''},{l:'Status',f:w=>sp(w.status)+(w.feeNote?` <span class="muted small">${esc(w.feeNote)}</span>`:'')},{l:'Fee',r:1,f:w=>money(wAmount(w))}],'No work logged yet.')}`}
 function bFees(){const t=today();const rows=db.fees.slice().sort((a,b)=>(a.sent||'')<(b.sent||'')?1:-1);
  return table('fees',rows,[{l:'No.',t:1,k:'number'},{l:'Matter',f:x=>esc(nameOf('matters',x.matter))},{l:'Sent to',k:'solicitor'},{l:'Sent',f:x=>fShort(x.sent)},{l:'Age',r:1,f:x=>feeOpen(x)&&x.sent?`<span style="color:${diffDays(x.sent,t)>90?'var(--rust)':'inherit'}">${diffDays(x.sent,t)} days</span>`:''},{l:'Status',f:x=>sp(x.status)},{l:'Invoice',f:x=>x.file?`<button class="btn sm" data-act="viewFile" data-f="${x.file.id}">${ic('file')}View</button>`:'<span class="muted small">Not uploaded</span>'},{l:'Amount',r:1,f:x=>money(x.amount)+(x.status==='Part paid'&&x.paid?`<br><span class="muted small">${money(x.paid)} paid</span>`:'')}],'No fee notes yet. Upload your first one.')}
-function bMatters(){return `<div class="cardhead"><p class="muted">Each case or instruction you bill against.</p>${addBtn('matters','New matter')}</div>`+table('matters',db.matters,[{l:'Matter',t:1,k:'name'},{l:'Instructing solicitor',k:'solicitor'},{l:'Court',k:'court'},{l:'Ref',k:'ref'},{l:'Work items',r:1,f:m=>db.work.filter(w=>w.matter===m.id).length},{l:'Total fees',r:1,f:m=>money(sum(db.work.filter(w=>w.matter===m.id),wAmount))}],'No matters yet.')}
+function bMatters(){return `<div class="cardhead"><p class="muted">Each case or instruction you bill against.</p>${addBtn('matters','New matter')}</div><input class="field" data-add="matter" placeholder="Quick add: type a matter name and press Enter" style="margin:12px 0">`+table('matters',db.matters,[{l:'Matter',t:1,k:'name'},{l:'Instructing solicitor',k:'solicitor'},{l:'Court',k:'court'},{l:'Ref',k:'ref'},{l:'Work items',r:1,f:m=>db.work.filter(w=>w.matter===m.id).length},{l:'Total fees',r:1,f:m=>money(sum(db.work.filter(w=>w.matter===m.id),wAmount))}],'No matters yet.')}
 
 /* ---------- SATSANG ---------- */
 function vSat(){const s=S.sub.sat;
@@ -1343,7 +1363,7 @@ function fieldHtml(f,v){const id='f_'+f.k,cls=`${f.full||f.t==='textarea'?'full'
  let inp;
  if(f.t==='textarea')inp=`<textarea class="field" id="${id}" style="${f.big?'min-height:220px':''}">${esc(v)}</textarea>`;
  else if(f.t==='select'){const o=typeof f.o==='function'?f.o():f.o;inp=`<select class="field" id="${id}"><option value=""></option>${o.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('')}</select>`}
- else if(f.t==='ref')inp=`<select class="field" id="${id}"><option value=""></option>${db[f.ref].map(x=>`<option value="${x.id}" ${x.id===v?'selected':''}>${esc(x[f.show])}</option>`).join('')}</select>`;
+ else if(f.t==='ref')inp=`<select class="field" id="${id}" ${QUICK[f.ref]?`data-newref="${f.ref}"`:''}><option value=""></option>${db[f.ref].map(x=>`<option value="${x.id}" ${x.id===v?'selected':''}>${esc(x[f.show])}</option>`).join('')}${quickOpt(f.ref)}</select>`;
  else if(f.t==='rating')inp=`<select class="field" id="${id}"><option value=""></option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${+v===n?'selected':''}>${'★'.repeat(n)} ${n}</option>`).join('')}</select>`;
  else if(f.t==='tags')inp=`<input class="field" id="${id}" value="${esc((v||[]).join(', '))}" placeholder="e.g. bhakti, seva, katha">`;
  else if(f.t==='file'||f.t==='image')inp=`<input class="field" type="file" id="${id}" ${f.t==='image'?'accept="image/*"':'accept="application/pdf,image/*,.doc,.docx"'}>${v?`<span class="small">Current: ${esc(v.name)} <button type="button" class="btn sm" data-act="viewFile" data-f="${v.id}">View</button> <button type="button" class="btn sm ghost" data-act="clearFile" data-k="${f.k}">Remove</button></span>`:''}`;
@@ -1442,6 +1462,7 @@ const A={
  wipe:e=>{if(e.dataset.sure){db=seed();db.examples=false;for(const k in db){if(Array.isArray(db[k]))db[k]=db[k].filter(x=>!x.ex)}db.habitLog={};db.days={};db.months={};db.years={};db.fitPlan={};save();render();toast('Erased')}else{e.dataset.sure=1;e.textContent='Tap again to erase everything'}}
 };
 const ADD={
+ matter:v=>db.matters.push({id:'m_'+uid(),name:v}),
  dayTodo:(v)=>db.todos.push({id:uid(),title:v,priority:'Normal',planned:S.date}),
  projTodo:(v,el)=>db.todos.push({id:uid(),title:v,priority:'Normal',project:el.dataset.id}),
  monthGoal:v=>M(S.month).goals.push({id:uid(),t:v,done:false}),
