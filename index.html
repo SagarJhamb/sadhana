@@ -637,7 +637,7 @@ const calGranted=()=>tokenOk()&&(G.scopes||'').includes('calendar.app.created');
 const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('calendar.events.readonly')&&(G.scopes||'').includes('calendar.calendarlist.readonly');
 const C={calId:null,list:null,busy:false,again:false,timer:null,last:0,ext:{},extAt:{},loading:{},error:null,pushed:0};
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London'}catch(e){return 'Europe/London'}})();
-const calDefaults=()=>({hearings:true,events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,tasks:true});
+const calDefaults=()=>({hearings:true,events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,tasks:true,nonneg:true});
 const calAlerts=()=>({hearing:'1440,60',tasks:'off',timed:'10',bday:'day',allday:'eve',...(db.settings.gcalAlerts||{})});
 const calWhat=()=>({...calDefaults(),...(db.settings.gcalWhat||{})});
 const hexId=s=>'sd'+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -677,6 +677,9 @@ function wanted(){const w=calWhat(),out={};const tz=TZ;const cm=catMap();
   const day=when<td?td:when;const extra=[t.priority&&t.priority!=='Normal'?t.priority:'',t.due&&t.due!==day?`due ${fShort(t.due)}`:'',when<td?`from ${fShort(when)}`:''].filter(Boolean).join(', ');
   const proj=t.project?((db.projects||[]).find(p=>p.id===t.project)||{}).name:'';
   out['td:'+t.id]=allDay(day,null,`${t.priority==='Non-negotiable'?'⭐':'☐'} ${t.title}${extra?' ('+extra+')':''}`,{description:[proj?'Project: '+proj:'',t.notes||'','Tick it off in Sadhana and it will disappear from here.'].filter(Boolean).join('\n'),_cat:t.category,task:1})}}
+ if(w.nonneg){const from=addDays(today(),-7);const taken=new Set(Object.values(out).filter(b=>b.task).map(b=>b.start.date+'|'+b.summary.replace(/^\S+ /,'').replace(/ \(.*\)$/,'').trim().toLowerCase()));
+  for(const d in db.days||{}){if(d<from)continue;(db.days[d].nonneg||[]).forEach((q,i)=>{const t=(q&&q.t||'').trim();if(!t||q.done||taken.has(d+'|'+t.toLowerCase()))return;
+   out['nn:'+d+':'+i]=allDay(d,null,`⭐ ${t}`,{description:'One of your three non-negotiables for today. Tick it off in Sadhana and it will disappear from here.',task:1})})}}
  const al=calAlerts();
  const where={};
  for(const k in out){const b=out[k];where[k]=catCals()?validCat(b._cat):'';delete b._cat;let mins=[];
@@ -761,11 +764,11 @@ function calCard(){const w=calWhat(),on=!!db.settings.gcal;
  return `<section class="card stack" style="gap:14px"><h3>Calendar</h3><p class="muted" id="calnote">${calNote()}</p>
   ${!on?`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Connect Google Calendar</button></div>`
   :`${calGranted()?'':`<div><button class="btn primary gbtn" data-act="calConnect">${GICON}Allow calendar access</button></div>`}
-   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('hearings','Court diary (hearings, papers and skeleton dates)')}${box('schedule','Day plan schedule')}${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('tasks','To-dos, as all-day items on the day planned (or due)')}</div>
+   <p class="small muted">Add to the Sadhana calendar:</p><div class="stack" style="gap:6px">${box('hearings','Court diary (hearings, papers and skeleton dates)')}${box('schedule','Day plan schedule')}${box('events','Events')}${box('birthdays','Birthdays (every year)')}${box('seva','Seva due dates')}${box('trips','Trips')}${box('dates','Planned date nights')}${box('nonneg','The 3 non-negotiables on each day plan')}${box('tasks','To-dos, as all-day items on the day planned (or due)')}</div>
    <div class="rule"></div><p class="small muted">Alerts on your iPhone and Mac (through Apple Calendar):</p>
    <div class="stack" style="gap:10px">
     ${alertSel('hearing','Hearings',[['0','No alert'],['60','1 hour before'],['120','2 hours before'],['1440','The day before'],['1440,60','The day before and 1 hour before']])}
-    ${alertSel('tasks','To-dos',[['off','No alert'],['eve','Day before at 6pm'],['morn','Day before at 9am']])}
+    ${alertSel('tasks','To-dos and non-negotiables',[['off','No alert'],['eve','Day before at 6pm'],['morn','Day before at 9am']])}
     ${alertSel('timed','Schedule and timed events',[['0','No alert'],['5','5 minutes before'],['10','10 minutes before'],['15','15 minutes before'],['30','30 minutes before'],['60','1 hour before']])}
     ${alertSel('bday','Birthdays',[['off','No alert'],['day','Day before at 9am'],['week','A week before and the day before']])}
     ${alertSel('allday','Seva, trips, date nights and to-dos',[['off','No alert'],['eve','Day before at 6pm'],['morn','Day before at 9am'],['two','Two days before at 9am']])}
