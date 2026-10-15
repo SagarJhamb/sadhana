@@ -641,7 +641,7 @@ async function findOrMakeCal(){
 
 async function pushCalendar(){
  const cal=await findOrMakeCal();const want=wanted();const have={};
- let page=null;do{const j=await calApi(`/calendars/${encodeURIComponent(cal)}/events?maxResults=2500&showDeleted=false&fields=items(id,extendedProperties),nextPageToken`+(page?'&pageToken='+page:''));for(const ev of j.items||[])have[ev.id]=((ev.extendedProperties||{}).private||{}).h||'';page=j.nextPageToken}while(page);
+ let page=null;do{const j=await calApi(`/calendars/${encodeURIComponent(cal)}/events?maxResults=2500&showDeleted=false&fields=items(id,extendedProperties),nextPageToken`+(page?'&pageToken='+page:''));for(const ev of j.items||[]){const pr=(ev.extendedProperties||{}).private||{};if(pr.sadhana==='1')have[ev.id]=pr.h||''}page=j.nextPageToken}while(page);
  const base=`/calendars/${encodeURIComponent(cal)}/events`;let n=0;
  for(const k in want){const id=hexId(k),body={...want[k],id};
   if(!(id in have)){try{await calApi(base,{method:'POST',json:body})}catch(e){if(e.code==='http'&&e.status===409)await calApi(`${base}/${id}`,{method:'PUT',json:body});else throw e}n++}
@@ -658,9 +658,10 @@ async function loadMonth(ym){
  try{const lst=await calList();const ids=showCals().map(id=>id==='primary'?(lst.find(c=>c.primary)||{}).id||'primary':id);
   const tMin=new Date(parse(ym+'-01').getTime()-86400000).toISOString(),tMax=new Date(parse(addMonths(ym,1)+'-01').getTime()+86400000).toISOString();
   const out=[];
-  for(const id of [...new Set(ids)]){const meta=lst.find(c=>c.id===id)||{name:'Calendar'};
-   const j=await calApi(`/calendars/${encodeURIComponent(id)}/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${encodeURIComponent(tMin)}&timeMax=${encodeURIComponent(tMax)}&fields=items(summary,start,end,location,status)`);
-   for(const ev of j.items||[]){if(ev.status==='cancelled')continue;
+  let own=null;if(calGranted()){try{own=await findOrMakeCal();ids.push(own)}catch(e){}}
+  for(const id of [...new Set(ids)]){const meta=id===own?{name:'Sadhana',color:''}:(lst.find(c=>c.id===id)||{name:'Calendar'});
+   const j=await calApi(`/calendars/${encodeURIComponent(id)}/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${encodeURIComponent(tMin)}&timeMax=${encodeURIComponent(tMax)}&fields=items(summary,start,end,location,status,extendedProperties)`);
+   for(const ev of j.items||[]){if(ev.status==='cancelled')continue;if((((ev.extendedProperties||{}).private)||{}).sadhana==='1')continue;
     if(ev.start.date){let d=ev.start.date;while(d<ev.end.date){out.push({date:d,title:ev.summary||'(busy)',time:'',cal:meta.name,color:meta.color});d=addDays(d,1)}}
     else{const s=new Date(ev.start.dateTime);out.push({date:iso(s),time:`${pad(s.getHours())}:${pad(s.getMinutes())}`,title:ev.summary||'(busy)',cal:meta.name,color:meta.color,loc:ev.location||''})}}}
   C.ext[ym]=out;C.extAt[ym]=Date.now();C.error=null}
