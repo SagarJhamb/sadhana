@@ -335,6 +335,14 @@ tbody tr.nohover:hover td{background:none}
   h1{font-size:1.7rem}
 }
 .syncpill{display:none}
+.timer{padding:16px 20px;margin-bottom:18px}
+.timer.running{border-color:var(--sage);box-shadow:0 0 0 1px var(--sage),var(--shadow)}
+.timer.paused,.timer.stopped{border-color:var(--clay)}
+.tmicon{font-size:1.2rem}
+.tmclock{font-family:var(--serif);font-size:1.9rem;line-height:1;letter-spacing:.01em}
+.tmpill{position:fixed;right:22px;bottom:22px;z-index:41;font:600 13px var(--sans);font-variant-numeric:tabular-nums;color:#fff;background:var(--sage-deep);border:0;border-radius:999px;padding:8px 14px;box-shadow:var(--shadow);cursor:pointer}
+.tmpill.paused,.tmpill.stopped{background:var(--clay)}
+@media (max-width:900px){.tmpill{right:auto;left:calc(12px + env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom))}}
 .card label.cb{display:flex;align-items:center;gap:10px}
 .cal .ev.x{background:transparent;border:1px dashed var(--line);color:var(--muted);cursor:default}
 .signin{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;background:var(--sage-soft);border:1px solid var(--line);border-radius:16px;padding:14px 18px;margin-bottom:18px}
@@ -358,6 +366,7 @@ body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-ri
   <main class="main"><div class="wrap" id="view"></div></main>
 </div>
 <div id="modalroot"></div>
+<div id="tmslot"></div>
 <button class="syncpill" id="syncpill" data-act="syncTap">Opening…</button>
 <div class="toast" id="toast"></div>
 <input type="file" id="importfile" accept="application/json" hidden>
@@ -818,6 +827,30 @@ function catCard(){const m=catMap();
   ${db.settings.gcal?`<label class="cb"><input type="checkbox" class="check" data-bind="settings.catCals" ${catCals()?'checked':''}>A separate calendar for each category in Apple Calendar</label>`:''}
  </section>`}
 
+/* ---------- time tracking timer ----------
+   Stored in the planner itself (db.timer), so she can start it on her iPhone and stop it on her Mac.
+   It records start times rather than counting, so it keeps going while the app is closed. */
+const TM=()=>(typeof db!=="undefined"&&db&&db.timer)||null;
+function tmElapsed(t){if(!t)return 0;const end=t.stopAt||t.pausedAt||Date.now();return Math.max(0,end-t.start-(t.paused||0))}
+function tmFmt(ms){const s=Math.floor(ms/1000),h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=s%60;return `${h}:${pad(m)}:${pad(x)}`}
+const tmHours=ms=>Math.max(0.1,Math.ceil(ms/360000)/10); /* 6-minute units, rounded up */
+function tmState(t){return !t?'idle':t.stopAt?'stopped':t.pausedAt?'paused':'running'}
+function timerCard(compact){const t=TM(),st=tmState(t);
+ const matters=db.matters||[];
+ const msel=`<select class="field" id="tm_matter" ${st==="idle"?"":`data-bind="timer.matter"`} aria-label="Matter" style="min-width:0;flex:1 1 200px">${'<option value="">Choose a matter (optional)</option>'+matters.map(m=>`<option value="${m.id}" ${t&&t.matter===m.id?'selected':''}>${esc(m.name)}</option>`).join('')}</select>`;
+ if(st==='idle')return `<section class="card timer idle"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:center"><span class="tmicon">⏱</span><b style="font-family:var(--serif);font-weight:500;font-size:1.05rem">Time tracker</b>${msel}<button class="btn primary" data-act="tmStart">Start timer</button></div></section>`;
+ const ms=tmElapsed(t);
+ return `<section class="card timer ${st}"><div class="row" style="gap:14px;flex-wrap:wrap;align-items:center;justify-content:space-between">
+  <div class="row" style="gap:12px;align-items:baseline"><span class="tmicon">⏱</span><span class="tmclock num" id="tmclock">${tmFmt(ms)}</span><span class="small muted">${st==='running'?'Running since '+new Date(t.start).toTimeString().slice(0,5):st==='paused'?'Paused':'Stopped: '+tmHours(ms).toFixed(1)+' hrs to log'}</span></div>
+  <div class="row" style="gap:8px;flex-wrap:wrap">${st==='running'?`<button class="btn" data-act="tmPause">Pause</button>`:st==='paused'?`<button class="btn" data-act="tmResume">Resume</button>`:`<button class="btn" data-act="tmResume">Keep going</button>`}<button class="btn primary" data-act="tmStop">${st==='stopped'?'Log it':'Stop and log'}</button><button class="btn ghost" data-act="tmDiscard">Discard</button></div></div>
+  <div class="row" style="gap:10px;flex-wrap:wrap;margin-top:12px">${msel}<input class="field" id="tm_note" data-bind="timer.note" value="${esc(t.note||'')}" placeholder="What are you working on?" style="flex:2 1 260px;min-width:0"></div></section>`}
+function tmPill(){const t=TM(),st=tmState(t);return st==='idle'?'':`<button class="tmpill ${st}" data-act="tmGo">⏱ <span id="tmpill">${tmFmt(tmElapsed(t))}</span></button>`}
+function tmTick(){const t=TM();if(!t)return;const v=tmFmt(tmElapsed(t));for(const id of ['tmclock','tmpill']){const el=document.getElementById(id);if(el)el.textContent=v}}
+setInterval(tmTick,1000);
+function tmLog(){const t=TM();if(!t)return;if(!t.stopAt){if(t.pausedAt){t.stopAt=t.pausedAt}else t.stopAt=Date.now()}save();
+ const ms=tmElapsed(t),d=iso(new Date(t.start));
+ openForm('work',null,{date:d,matter:t.matter||'',work:t.note||'',basis:'Hourly',hours:tmHours(ms),rate:db.settings.rate,status:'Unbilled'});MODAL.fromTimer=true}
+
 /* ---------- seed (clearly marked examples) ---------- */
 function seed(){
  const t=today(),ym=ymOf(t),y=t.slice(0,4),wk=monday(t),ex=true;
@@ -942,7 +975,7 @@ function vHome(){
  const it=(txt,c='')=>`<div class="it"><i class="${c}"></i><span>${txt}</span></div>`;
  const groups=PRI.map(p=>[p,list.filter(x=>(x.priority||'Normal')===p)]).filter(g=>g[1].length);
  const ovc=(title,where,ok,okText,todoText,go)=>`<button class="ovc" data-act="goPlan" data-v="${go}"><span class="t">${title}</span><span class="w">${ic('pin')}${where}</span>${ok?pill(okText,'green'):pill(todoText,'clay')}</button>`;
- return `${exBanner()}
+ return `${exBanner()}${timerCard()}
  <div class="grid2 split" style="align-items:start">
   <div class="stack">
    <section class="card">
@@ -1216,7 +1249,7 @@ function vBar(){const s=S.sub.bar,t=today(),ty=taxYearStart();
  const aged=open.filter(f=>f.sent&&diffDays(f.sent,t)>90);const agedAmt=sum(aged,f=>(+f.amount||0)-(+f.paid||0));
  const paidTY=sum(db.fees.filter(f=>(f.status==='Paid'||f.status==='Part paid')&&(f.paidOn||f.sent||'')>=ty),f=>f.paid||(f.status==='Paid'?f.amount:0));
  const hrs=sum(db.work.filter(w=>w.date>=ty),w=>w.hours);
- return head('Barrister billing','Log every piece of work, upload fee notes, and see what is owed.',`${addBtn('work','Log work',{date:t,basis:'Hourly',rate:db.settings.rate,status:'Unbilled'})}<button class="btn" data-act="add" data-col="fees" data-preset='${esc(JSON.stringify({sent:t,status:'Outstanding'}))}'>${ic('file')}Upload fee note</button>`)+
+ return head('Barrister billing','Log every piece of work, upload fee notes, and see what is owed.',`${addBtn('work','Log work',{date:t,basis:'Hourly',rate:db.settings.rate,status:'Unbilled'})}<button class="btn" data-act="add" data-col="fees" data-preset='${esc(JSON.stringify({sent:t,status:'Outstanding'}))}'>${ic('file')}Upload fee note</button>`)+timerCard()+
  (s==='diary'?'':`<div class="grid4"><div class="stat"><span class="l">Unbilled work</span><span class="v">${money0(unbilled)}</span><span class="s num">${db.work.filter(w=>w.status==='Unbilled').length} items to invoice</span></div><div class="stat"><span class="l">Outstanding fees</span><span class="v">${money0(outstanding)}</span><span class="s num">${open.length} fee notes</span></div><div class="stat ${aged.length?'warn':''}"><span class="l">Over 90 days</span><span class="v">${money0(agedAmt)}</span><span class="s num">${aged.length} to chase</span></div><div class="stat"><span class="l">Received this tax year</span><span class="v">${money0(paidTY)}</span><span class="s num">Since ${fFull(ty)} · ${hrs.toFixed(1)} hrs logged</span></div></div>`)+
  tabs('bar',[['diary','Court diary'],['log','Work log'],['fees','Fee notes & invoices'],['matters','Matters']])+({diary:bDiary,log:bLog,fees:bFees,matters:bMatters}[s])()}
 const hLive=h=>h.status!=='Vacated'&&h.status!=='Adjourned';
@@ -1298,7 +1331,7 @@ function signBanner(){if(!configured()||tokenOk())return '';
 const VIEWS={home:vHome,planning:vPlanning,projects:vProjects,growth:vGrowth,health:vHealth,finance:vFinance,org:vOrg,bar:vBar,sat:vSat,settings:vSettings};
 function renderNav(){document.getElementById('nav').innerHTML=NAV.map(([k,l])=>`<button class="${S.view===k?'on':''}" data-act="nav" data-v="${k}">${ic(NICON[k])}<span>${l}</span></button>`).join('')}
 function render(){const a=document.activeElement,aid=a&&a.id,pos=a&&a.selectionStart;
- renderNav();document.getElementById('view').innerHTML=signBanner()+VIEWS[S.view]();tickClock();hydrate();
+ renderNav();document.getElementById('view').innerHTML=signBanner()+VIEWS[S.view]();{const ts=document.getElementById('tmslot');if(ts)ts.innerHTML=(S.view==='home'||S.view==='bar')?'':tmPill()}tickClock();hydrate();
  if(aid){const e=document.getElementById(aid);if(e){e.focus();try{if(pos!=null)e.setSelectionRange(pos,pos)}catch(_){}}}}
 async function hydrate(){for(const el of document.querySelectorAll('[data-file]')){const u=await fileURL(el.dataset.file);if(u)el.src=u}}
 function applyTheme(){const t=db.settings.theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;else if(document.documentElement.dataset.theme&&document.documentElement.dataset.setBy==='app')delete document.documentElement.dataset.theme;document.documentElement.dataset.setBy=(t==='system')?'':'app'}
@@ -1334,7 +1367,7 @@ async function submitForm(){const {col,id}=MODAL;const sc=SCHEMA[col];const out=
  if(id){const it=byId(col,id);Object.assign(it,out)}else db[col].push({id:uid(),...out});
  if(col==='fees'&&out.status==='Paid'){db.work.filter(w=>w.feeNote&&w.feeNote===out.number).forEach(w=>w.status='Paid')}
  if(col==='fees'&&!id){db.work.filter(w=>w.feeNote&&w.feeNote===out.number&&w.status==='Unbilled').forEach(w=>w.status='Invoiced')}
- save();closeModal();render();toast(id?'Saved':'Added')}
+ if(MODAL&&MODAL.fromTimer&&col==='work')db.timer=null;save();closeModal();render();toast(id?'Saved':'Added')}
 
 /* ---------- actions ---------- */
 const A={
@@ -1352,6 +1385,12 @@ const A={
  catAdd:()=>{const n=cats().length;cats().push({id:'c_'+uid(),name:'New category',color:CAT_COLOURS[n%CAT_COLOURS.length][0]});save();render();setTimeout(()=>{const el=document.getElementById('catname'+n);if(el){el.focus();el.select()}},30)},
  catDel:e=>{if(!e.dataset.sure){e.dataset.sure=1;toast('Tap the cross again to delete this category');return}db.categories=cats().filter(c=>c.id!==e.dataset.id);save();render();toast('Category deleted. Its items now have no category.')},
  catPick:e=>{const id=e.dataset.id;if(!id){db.settings.catOnly=[]}else{const o=onlyCats();if(o.has(id))o.delete(id);else o.add(id);db.settings.catOnly=[...o]}save();render()},
+ tmStart:()=>{const m=(document.getElementById('tm_matter')||{}).value||'';db.timer={start:Date.now(),matter:m,note:'',paused:0};save();render()},
+ tmPause:()=>{const t=TM();if(t&&!t.pausedAt){t.pausedAt=Date.now();save();render()}},
+ tmResume:()=>{const t=TM();if(!t)return;const from=t.pausedAt||t.stopAt;if(from){t.paused=(t.paused||0)+(Date.now()-from)}delete t.pausedAt;delete t.stopAt;save();render()},
+ tmStop:()=>tmLog(),
+ tmDiscard:e=>{if(!e.dataset.sure){e.dataset.sure=1;e.textContent='Tap again to discard';return}db.timer=null;save();render();toast('Timer discarded')},
+ tmGo:()=>{S.view='bar';render();window.scrollTo(0,0)},
  calConnect:()=>{db.settings.gcal=true;G.rev++;persist().then(()=>signIn(false,true,true))},
  calOff:()=>{db.settings.gcal=false;C.calId=null;C.ext={};save();render();toast('Calendar disconnected. The Sadhana calendar stays in Google Calendar until you delete it there.')},
  calNow:()=>{C.extAt={};C.list=null;runCal();toast('Syncing calendar')},
