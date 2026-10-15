@@ -185,11 +185,15 @@ textarea.field{min-height:90px;resize:vertical;line-height:1.55}
 .cal .ev.hr{background:var(--rust-soft);color:var(--rust);font-weight:500}
 .ln.half{min-height:30px;border-bottom-style:dashed}
 .ln.half .h{opacity:.7}
-.ln:has(select.dur){grid-template-columns:52px 1fr auto}
+.ln:has(select.dur){grid-template-columns:52px 1fr auto auto}
+select.dcat{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--muted);font:500 .72rem var(--sans);padding:0 2px 8px;cursor:pointer;max-width:84px;text-overflow:ellipsis}
+select.dcat:hover,select.dcat:focus{color:var(--ink)}
+.catdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle;box-shadow:0 0 0 1.5px rgba(255,255,255,.75)}
+.catbar .chip:not(.on){opacity:.5}
 select.dur{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:var(--muted);font:500 .72rem var(--sans);padding:0 2px 8px;cursor:pointer;text-align:right}
 select.dur:hover,select.dur:focus{color:var(--ink)}
-.ln:has(input.hand:placeholder-shown) select.dur{visibility:hidden}
-.ln:has(input.hand:focus) select.dur{visibility:visible}
+.ln:has(input.hand:placeholder-shown) select.dur,.ln:has(input.hand:placeholder-shown) select.dcat{visibility:hidden}
+.ln:has(input.hand:focus) select.dur,.ln:has(input.hand:focus) select.dcat{visibility:visible}
 .ln input.hand::placeholder{color:var(--muted);opacity:.55}
 .ln.nohour{grid-template-columns:24px 1fr}
 .ln .h{font-size:.72rem;color:var(--muted);padding-bottom:7px;font-variant-numeric:tabular-nums}
@@ -419,7 +423,7 @@ const MOODS=['','Low','Meh','Okay','Good','Great'];
 const PRI=['Non-negotiable','High','Normal','Low'];
 const AREAS=['Career','Health','Finance','Relationships','Spiritual','Personal'];
 const SCHEMA={
- todos:{name:'to-do',f:[{k:'title',l:'Task',t:'text',req:1,full:1},{k:'priority',l:'Priority',t:'select',o:PRI},{k:'project',l:'Project',t:'ref',ref:'projects',show:'name'},{k:'planned',l:'Planned for',t:'date'},{k:'due',l:'Due',t:'date'},{k:'notes',l:'Notes',t:'textarea',full:1}]},
+ todos:{name:'to-do',f:[{k:'title',l:'Task',t:'text',req:1,full:1},{k:'priority',l:'Priority',t:'select',o:PRI},{k:'category',l:'Category',t:'ref',ref:'categories',show:'name'},{k:'project',l:'Project',t:'ref',ref:'projects',show:'name'},{k:'planned',l:'Planned for',t:'date'},{k:'due',l:'Due',t:'date'},{k:'notes',l:'Notes',t:'textarea',full:1}]},
  projects:{name:'project',f:[{k:'name',l:'Project name',t:'text',req:1,full:1},{k:'status',l:'Status',t:'select',o:['Not started','In progress','On hold','Done']},{k:'area',l:'Area',t:'select',o:['Work','Personal','Content','Home','Health','Finance']},{k:'due',l:'Due',t:'date'},{k:'description',l:'Description',t:'textarea',full:1}]},
  habits:{name:'habit',f:[{k:'name',l:'Habit',t:'text',req:1,full:1},{k:'why',l:'Why it matters',t:'text',full:1}]},
  audits:{name:'weekly audit',f:[{k:'week',l:'Week starting',t:'date',req:1,full:1},{k:'focus',l:'Deep focus',t:'rating'},{k:'energy',l:'Energy',t:'rating'},{k:'priorities',l:'Time on priorities',t:'rating'},{k:'distraction',l:'Stayed off distractions',t:'rating'},{k:'wins',l:'Wins this week',t:'textarea',full:1},{k:'drains',l:'Biggest time drains',t:'textarea',full:1},{k:'change',l:'One change for next week',t:'text',full:1}]},
@@ -430,7 +434,7 @@ const SCHEMA={
  budgetCats:{name:'budget category',f:[{k:'name',l:'Category',t:'text',req:1},{k:'limit',l:'Monthly budget',t:'money',req:1}]},
  clients:{name:'client',f:[{k:'name',l:'Client',t:'text',req:1,full:1},{k:'contact',l:'Contact / email',t:'text',full:1},{k:'notes',l:'Notes',t:'textarea',full:1}]},
  invoices:{name:'invoice',f:[{k:'number',l:'Invoice no.',t:'text',req:1},{k:'client',l:'Client',t:'ref',ref:'clients',show:'name'},{k:'issued',l:'Issued',t:'date'},{k:'due',l:'Due',t:'date'},{k:'amount',l:'Amount',t:'money',req:1},{k:'status',l:'Status',t:'select',o:['Draft','Sent','Paid','Overdue']},{k:'file',l:'Invoice file',t:'file',full:1},{k:'notes',l:'Notes',t:'text',full:1}]},
- events:{name:'event',f:[{k:'title',l:'Event',t:'text',req:1,full:1},{k:'date',l:'Date',t:'date',req:1},{k:'time',l:'Time',t:'time'},{k:'location',l:'Location',t:'text',full:1},{k:'notes',l:'Notes',t:'textarea',full:1}]},
+ events:{name:'event',f:[{k:'title',l:'Event',t:'text',req:1,full:1},{k:'date',l:'Date',t:'date',req:1},{k:'time',l:'Time',t:'time'},{k:'category',l:'Category',t:'ref',ref:'categories',show:'name'},{k:'location',l:'Location',t:'text',full:1},{k:'notes',l:'Notes',t:'textarea',full:1}]},
  birthdays:{name:'birthday',f:[{k:'name',l:'Name',t:'text',req:1,full:1},{k:'date',l:'Birthday',t:'date',req:1},{k:'yearKnown',l:'The year above is their birth year',t:'check'},{k:'gift',l:'Gift ideas',t:'text',full:1},{k:'notes',l:'Notes',t:'text',full:1}]},
  outfits:{name:'outfit',f:[{k:'name',l:'Outfit',t:'text',req:1,full:1},{k:'occasion',l:'Occasion',t:'select',o:['Work','Court','Casual','Evening','Date night','Holiday','Event']},{k:'date',l:'Wearing on',t:'date'},{k:'items',l:'Pieces (one per line)',t:'textarea',full:1},{k:'image',l:'Photo',t:'image',full:1}]},
  trips:{name:'trip',f:[{k:'destination',l:'Destination',t:'text',req:1,full:1},{k:'start',l:'From',t:'date'},{k:'end',l:'To',t:'date'},{k:'status',l:'Status',t:'select',o:['Dreaming','Booked','Done']},{k:'budget',l:'Budget',t:'money'},{k:'stay',l:'Where we\'re staying',t:'text',full:1},{k:'itinerary',l:'Itinerary',t:'textarea',full:1},{k:'packing',l:'Packing list (one item per line)',t:'textarea',full:1}]},
@@ -643,61 +647,76 @@ async function calApi(path,opt={}){const body=opt.json!==undefined?JSON.stringif
  const r=await api(CAL+path,{method:opt.method||'GET',headers:body?{'Content-Type':'application/json'}:{},body});
  return r.status===204?null:r.json()}
 
-function wanted(){const w=calWhat(),out={};const tz=TZ;
+function wanted(){const w=calWhat(),out={};const tz=TZ;const cm=catMap();
  const allDay=(start,end,summary,extra={})=>({summary,start:{date:start},end:{date:end||dayAfter(start)},transparency:'transparent',...extra});
  if(w.events)for(const e of db.events||[]){if(!e.date||!e.title)continue;
   let body;if(e.time&&/^\d{1,2}:\d{2}$/.test(e.time)){const [h,m]=e.time.split(':').map(Number);const st=`${e.date}T${pad(h)}:${pad(m)}:00`;const en=new Date(parse(e.date).getTime()+((h*60+m+60)*60000));
    body={summary:e.title,start:{dateTime:st,timeZone:tz},end:{dateTime:`${iso(en)}T${pad(en.getHours())}:${pad(en.getMinutes())}:00`,timeZone:tz}}}
   else body=allDay(e.date,null,e.title);
-  if(e.location)body.location=e.location;if(e.notes)body.description=e.notes;out['ev:'+e.id]=body}
- if(w.birthdays)for(const b of db.birthdays||[]){if(!b.date||!b.name)continue;out['bd:'+b.id]=allDay(b.date,null,`🎂 ${b.name}'s birthday`,{recurrence:['RRULE:FREQ=YEARLY'],description:b.gift?`Gift ideas: ${b.gift}`:''})}
- if(w.seva)for(const s of db.seva||[]){if(!s.due||s.done||!s.title)continue;out['sv:'+s.id]=allDay(s.due,null,`🪷 ${s.kind==='Call'?'Seva call':'Seva'}: ${s.title}`,{description:[s.person,s.phone,s.notes].filter(Boolean).join('\n')})}
- if(w.trips)for(const t of db.trips||[]){if(!t.start||!t.destination)continue;out['tr:'+t.id]=allDay(t.start,dayAfter(t.end&&t.end>=t.start?t.end:t.start),`✈️ ${t.destination}`,{description:t.stay||''})}
- if(w.dates)for(const d of db.dates||[]){if(!d.date||!d.idea||d.status==='Idea')continue;out['dt:'+d.id]=allDay(d.date,null,`💛 ${d.idea}`,{description:d.notes||''})}
+  if(e.location)body.location=e.location;if(e.notes)body.description=e.notes;body._cat=e.category;out['ev:'+e.id]=body}
+ if(w.birthdays)for(const b of db.birthdays||[]){if(!b.date||!b.name)continue;out['bd:'+b.id]=allDay(b.date,null,`🎂 ${b.name}'s birthday`,{recurrence:['RRULE:FREQ=YEARLY'],description:b.gift?`Gift ideas: ${b.gift}`:'',_cat:cm.birthdays})}
+ if(w.seva)for(const s of db.seva||[]){if(!s.due||s.done||!s.title)continue;out['sv:'+s.id]=allDay(s.due,null,`🪷 ${s.kind==='Call'?'Seva call':'Seva'}: ${s.title}`,{description:[s.person,s.phone,s.notes].filter(Boolean).join('\n'),_cat:cm.seva})}
+ if(w.trips)for(const t of db.trips||[]){if(!t.start||!t.destination)continue;out['tr:'+t.id]=allDay(t.start,dayAfter(t.end&&t.end>=t.start?t.end:t.start),`✈️ ${t.destination}`,{description:t.stay||'',_cat:cm.trips})}
+ if(w.dates)for(const d of db.dates||[]){if(!d.date||!d.idea||d.status==='Idea')continue;out['dt:'+d.id]=allDay(d.date,null,`💛 ${d.idea}`,{description:d.notes||'',_cat:cm.dates})}
  if(w.schedule){const from=addDays(today(),-14);const mins=k=>(+k.slice(0,2))*60+(+k.slice(3));const hm=n=>`${pad(Math.floor(n/60))}:${pad(n%60)}`;
   for(const d in db.days||{}){if(d<from)continue;const sc=(db.days[d]||{}).schedule||{};
    const ks=Object.keys(sc).filter(k=>/^\d{2}:\d{2}$/.test(k)&&(sc[k]||'').trim()).sort();
    ks.forEach((k,i)=>{const st=mins(k),nx=i+1<ks.length?mins(ks[i+1]):Infinity;const len=+(((db.days[d]||{}).dur||{})[k])||0;const en=Math.min(len?st+len:Math.min(st+(k.endsWith(':30')?30:60),nx),23*60+59);
-    out['sc:'+d+':'+k.replace(':','')]={summary:sc[k].trim(),start:{dateTime:`${d}T${k}:00`,timeZone:tz},end:{dateTime:`${d}T${hm(en)}:00`,timeZone:tz},description:'From your Sadhana day plan'}})}}
+    out['sc:'+d+':'+k.replace(':','')]={summary:sc[k].trim(),start:{dateTime:`${d}T${k}:00`,timeZone:tz},end:{dateTime:`${d}T${hm(en)}:00`,timeZone:tz},description:'From your Sadhana day plan',_cat:(((db.days[d]||{}).cat)||{})[k]}})}}
  if(w.hearings)for(const h of db.hearings||[]){if(!h.date||h.status==='Vacated'||h.status==='Adjourned')continue;const m=(db.matters||[]).find(x=>x.id===h.matter)||{};const nm=m.name||'Hearing';
   const desc=[h.type,[h.court,h.room].filter(Boolean).join(', '),h.judge?'Judge: '+h.judge:'',m.solicitor?'Instructed by '+m.solicitor:'',h.notes].filter(Boolean).join('\n');
   let body;if(h.until&&h.until>h.date)body=allDay(h.date,dayAfter(h.until),`⚖️ ${h.type||'Hearing'}: ${nm}`,{description:desc});
   else if(h.time&&/^\d{1,2}:\d{2}$/.test(h.time)){const [hh,mm]=h.time.split(':').map(Number);const len={'2 hours':120,'Half day':180,'Full day':360}[h.length]||60;const st=hh*60+mm,en=Math.min(st+len,23*60+59);
    body={summary:`⚖️ ${nm}${h.type?' ('+h.type+')':''}`,start:{dateTime:`${h.date}T${pad(hh)}:${pad(mm)}:00`,timeZone:tz},end:{dateTime:`${h.date}T${pad(Math.floor(en/60))}:${pad(en%60)}:00`,timeZone:tz},description:desc}}
   else body=allDay(h.date,null,`⚖️ ${nm}${h.type?' ('+h.type+')':''}`,{description:desc});
-  if(h.court)body.location=[h.court,h.room].filter(Boolean).join(', ');body.hearing=1;out['hr:'+h.id]=body;
+  if(h.court)body.location=[h.court,h.room].filter(Boolean).join(', ');body.hearing=1;body._cat=cm.hearings;out['hr:'+h.id]=body;
   if(h.status==='Done')continue;
-  if(h.papersDue)out['hp:'+h.id]=allDay(h.papersDue,null,`📚 Papers due: ${nm}`);
-  if(h.skeletonDue)out['hs:'+h.id]=allDay(h.skeletonDue,null,`✍️ Skeleton due: ${nm}`)}
- if(w.todos)for(const t of db.todos||[]){if(!t.due||t.done||!t.title)continue;out['td:'+t.id]=allDay(t.due,null,`☑️ Due: ${t.title}`)}
+  if(h.papersDue)out['hp:'+h.id]=allDay(h.papersDue,null,`📚 Papers due: ${nm}`,{_cat:cm.hearings});
+  if(h.skeletonDue)out['hs:'+h.id]=allDay(h.skeletonDue,null,`✍️ Skeleton due: ${nm}`,{_cat:cm.hearings})}
+ if(w.todos)for(const t of db.todos||[]){if(!t.due||t.done||!t.title)continue;out['td:'+t.id]=allDay(t.due,null,`☑️ Due: ${t.title}`,{_cat:t.category})}
  const al=calAlerts();
- for(const k in out){const b=out[k];let mins=[];
+ const where={};
+ for(const k in out){const b=out[k];where[k]=catCals()?validCat(b._cat):'';delete b._cat;let mins=[];
   if(b.hearing){delete b.hearing;mins=String(al.hearing).split(',').map(Number).filter(Boolean)}
   else if(b.start.dateTime){if(+al.timed)mins=[+al.timed]}
   else if(k.startsWith('bd:')){mins=al.bday==='week'?[10980,900]:al.bday==='day'?[900]:[]}
   else mins=al.allday==='eve'?[360]:al.allday==='morn'?[900]:al.allday==='two'?[2340]:[];
   b.reminders={useDefault:false,overrides:mins.map(m=>({method:'popup',minutes:m}))};
   b.status='confirmed';const h=strHash(JSON.stringify(b));b.extendedProperties={private:{sadhana:'1',h}}}
- return out}
+ wanted.where=where;return out}
 
-async function findOrMakeCal(){
- if(C.calId)return C.calId;
- let page=null,found=null;do{const j=await calApi('/users/me/calendarList?minAccessRole=owner&maxResults=250'+(page?'&pageToken='+page:''));found=(j.items||[]).find(c=>c.summary==='Sadhana'&&c.description==='Planner events from Sadhana');page=j.nextPageToken}while(!found&&page);
- if(!found)found=await calApi('/calendars',{method:'POST',json:{summary:'Sadhana',description:'Planner events from Sadhana',timeZone:TZ}});
- C.calId=found.id;return C.calId}
+const CAL_TAG='Planner events from Sadhana';
+const catTag=id=>`${CAL_TAG} [${id}]`;
+async function ourCals(){const out={main:null,byCat:{},stray:[]};let page=null;
+ do{const j=await calApi('/users/me/calendarList?minAccessRole=owner&maxResults=250'+(page?'&pageToken='+page:''));
+  for(const c of j.items||[]){const d=c.description||'';if(d===CAL_TAG&&c.summary==='Sadhana'){if(!out.main)out.main=c}else if(d.startsWith(CAL_TAG+' [')){const id=d.slice(CAL_TAG.length+2,-1);if(!out.byCat[id])out.byCat[id]=c;else out.stray.push(c)}}
+  page=j.nextPageToken}while(page);return out}
+async function findOrMakeCal(){if(C.calId)return C.calId;const o=await ourCals();
+ const main=o.main||await calApi('/calendars',{method:'POST',json:{summary:'Sadhana',description:CAL_TAG,timeZone:TZ}});C.calId=main.id;return C.calId}
+async function catCal(id,have){const c=catById(id);const want=`Sadhana · ${c.name}`;
+ if(have[id]){if(have[id].summary!==want){try{await calApi(`/calendars/${encodeURIComponent(have[id].id)}`,{method:'PATCH',json:{summary:want}})}catch(e){}}return have[id].id}
+ const made=await calApi('/calendars',{method:'POST',json:{summary:want,description:catTag(id),timeZone:TZ}});return made.id}
 
 async function pushCalendar(){
- const cal=await findOrMakeCal();const want=wanted();const have={};
- let page=null;do{const j=await calApi(`/calendars/${encodeURIComponent(cal)}/events?maxResults=2500&showDeleted=false&fields=items(id,extendedProperties),nextPageToken`+(page?'&pageToken='+page:''));for(const ev of j.items||[]){const pr=(ev.extendedProperties||{}).private||{};if(pr.sadhana==='1')have[ev.id]=pr.h||''}page=j.nextPageToken}while(page);
- const base=`/calendars/${encodeURIComponent(cal)}/events`;let n=0;
- for(const k in want){const id=hexId(k),body={...want[k],id};
-  if(!(id in have)){try{await calApi(base,{method:'POST',json:body})}catch(e){if(e.code==='http'&&e.status===409)await calApi(`${base}/${id}`,{method:'PUT',json:body});else throw e}n++}
-  else if(have[id]!==body.extendedProperties.private.h){await calApi(`${base}/${id}`,{method:'PUT',json:body});n++}}
- for(const id in have){if(id.startsWith('sd')&&!Object.keys(want).some(k=>hexId(k)===id)){try{await calApi(`${base}/${id}`,{method:'DELETE'})}catch(e){if(!(e.code==='http'&&(e.status===404||e.status===410)))throw e}n++}}
+ const want=wanted(),where=wanted.where;const o=await ourCals();
+ if(!o.main)o.main=await calApi('/calendars',{method:'POST',json:{summary:'Sadhana',description:CAL_TAG,timeZone:TZ}});C.calId=o.main.id;
+ const target={'':o.main.id};for(const k in want){const c=where[k];if(c&&!(c in target))target[c]=await catCal(c,o.byCat)}
+ C.catCalIds={...Object.fromEntries(Object.entries(o.byCat).map(([k,v])=>[k,v.id])),...target};
+ const all=new Set([o.main.id,...Object.values(o.byCat).map(c=>c.id),...Object.values(target)]);
+ let n=0;
+ for(const cal of all){const have={};let page=null;
+  do{const j=await calApi(`/calendars/${encodeURIComponent(cal)}/events?maxResults=2500&showDeleted=false&fields=items(id,extendedProperties),nextPageToken`+(page?'&pageToken='+page:''));for(const ev of j.items||[]){const pr=(ev.extendedProperties||{}).private||{};if(pr.sadhana==='1')have[ev.id]=pr.h||''}page=j.nextPageToken}while(page);
+  const base=`/calendars/${encodeURIComponent(cal)}/events`;const mine=Object.keys(want).filter(k=>target[where[k]||'']===cal);const ids=new Set(mine.map(hexId));
+  for(const k of mine){const id=hexId(k),body={...want[k],id};
+   if(!(id in have)){try{await calApi(base,{method:'POST',json:body})}catch(e){if(e.code==='http'&&e.status===409)await calApi(`${base}/${id}`,{method:'PUT',json:body});else throw e}n++}
+   else if(have[id]!==body.extendedProperties.private.h){await calApi(`${base}/${id}`,{method:'PUT',json:body});n++}}
+  for(const id in have){if(!ids.has(id)){try{await calApi(`${base}/${id}`,{method:'DELETE'})}catch(e){if(!(e.code==='http'&&(e.status===404||e.status===410)))throw e}n++}}}
+ /* a category she deleted: remove its calendar once it's empty */
+ for(const [id,c] of Object.entries(o.byCat)){if(!catById(id)||!catCals()){if(!Object.values(target).includes(c.id)){try{await calApi(`/calendars/${encodeURIComponent(c.id)}`,{method:'DELETE'})}catch(e){}}}}
  C.pushed=n;return n}
 
 /* her own calendars */
-async function calList(){if(C.list)return C.list;const j=await calApi('/users/me/calendarList?maxResults=250');C.list=(j.items||[]).filter(c=>c.summary!=='Sadhana'||c.description!=='Planner events from Sadhana').map(c=>({id:c.id,name:c.summaryOverride||c.summary,primary:!!c.primary,color:c.backgroundColor}));return C.list}
+async function calList(){if(C.list)return C.list;const j=await calApi('/users/me/calendarList?maxResults=250');C.list=(j.items||[]).filter(c=>!(c.description||'').startsWith(CAL_TAG)).map(c=>({id:c.id,name:c.summaryOverride||c.summary,primary:!!c.primary,color:c.backgroundColor}));return C.list}
 const showCals=()=>db.settings.gcalShow||['primary'];
 async function loadMonth(ym){
  if(!calCanRead()||C.loading[ym])return;if(C.extAt[ym]&&Date.now()-C.extAt[ym]<60000)return;
@@ -705,12 +724,12 @@ async function loadMonth(ym){
  try{const lst=await calList();const ids=showCals().map(id=>id==='primary'?(lst.find(c=>c.primary)||{}).id||'primary':id);
   const tMin=new Date(parse(ym+'-01').getTime()-86400000).toISOString(),tMax=new Date(parse(addMonths(ym,1)+'-01').getTime()+86400000).toISOString();
   const out=[];
-  let own=null;if(calGranted()){try{own=await findOrMakeCal();ids.push(own)}catch(e){}}
-  for(const id of [...new Set(ids)]){const meta=id===own?{name:'Sadhana',color:''}:(lst.find(c=>c.id===id)||{name:'Calendar'});
+  const ownMeta={};if(calGranted()){try{const o=await ourCals();if(o.main){ids.push(o.main.id);ownMeta[o.main.id]={name:'Sadhana',color:'',cat:''}}for(const [cid,c] of Object.entries(o.byCat)){ids.push(c.id);ownMeta[c.id]={name:c.summary,color:'',cat:cid}}}catch(e){}}
+  for(const id of [...new Set(ids)]){const meta=ownMeta[id]||(lst.find(c=>c.id===id)||{name:'Calendar'});
    const j=await calApi(`/calendars/${encodeURIComponent(id)}/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${encodeURIComponent(tMin)}&timeMax=${encodeURIComponent(tMax)}&fields=items(summary,start,end,location,status,extendedProperties)`);
    for(const ev of j.items||[]){if(ev.status==='cancelled')continue;if((((ev.extendedProperties||{}).private)||{}).sadhana==='1')continue;
-    if(ev.start.date){let d=ev.start.date;while(d<ev.end.date){out.push({date:d,title:ev.summary||'(busy)',time:'',cal:meta.name,color:meta.color});d=addDays(d,1)}}
-    else{const s=new Date(ev.start.dateTime);out.push({date:iso(s),time:`${pad(s.getHours())}:${pad(s.getMinutes())}`,title:ev.summary||'(busy)',cal:meta.name,color:meta.color,loc:ev.location||''})}}}
+    if(ev.start.date){let d=ev.start.date;while(d<ev.end.date){out.push({date:d,title:ev.summary||'(busy)',time:'',cal:meta.name,color:meta.color,cat:meta.cat||''});d=addDays(d,1)}}
+    else{const s=new Date(ev.start.dateTime);out.push({date:iso(s),time:`${pad(s.getHours())}:${pad(s.getMinutes())}`,title:ev.summary||'(busy)',cal:meta.name,color:meta.color,cat:meta.cat||'',loc:ev.location||''})}}}
   C.ext[ym]=out;C.extAt[ym]=Date.now();C.error=null}
  catch(e){C.error=e.code==='scope'?'scope':'load';C.extAt[ym]=Date.now()}
  C.loading[ym]=false;refreshView()}
@@ -756,6 +775,39 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
 setInterval(()=>{if(document.visibilityState==='visible'&&db&&db.settings.gcal&&calCanRead()){C.extAt={};refreshView()}},120000);
 
 function alertSel(k,label,opts){const v=String(calAlerts()[k]);return `<label class="small muted" style="display:flex;flex-direction:column;gap:5px">${label}<select class="field" id="al_${k}" data-bind="settings.gcalAlerts.${k}" style="max-width:260px">${opts.map(([o,l])=>`<option value="${o}" ${o===v?'selected':''}>${l}</option>`).join('')}</select></label>`}
+
+/* ---------- calendar categories ----------
+   Her own list of categories, each with a colour. Events, to-dos and day plan slots can have one;
+   built-in items (hearings, seva, birthdays, trips, date nights) follow the mapping in Settings.
+   In Google/Apple Calendar each category gets its own calendar ("Sadhana · Work"), so she can colour and hide them there. */
+const CAT_COLOURS=[['#6E7E5C','Sage'],['#4B5840','Olive'],['#A07A57','Clay'],['#C9A27C','Sand'],['#A8614A','Terracotta'],['#B77A8A','Rose'],['#8C7BB0','Lavender'],['#5E8A9A','Teal'],['#D08C3C','Saffron'],['#6B6052','Walnut']];
+const DEFAULT_CATS=[{id:'c_work',name:'Work',color:'#4B5840'},{id:'c_personal',name:'Personal',color:'#C9A27C'},{id:'c_satsang',name:'Satsang',color:'#D08C3C'},{id:'c_health',name:'Health',color:'#5E8A9A'},{id:'c_social',name:'Social',color:'#B77A8A'},{id:'c_family',name:'Family',color:'#8C7BB0'}];
+function cats(){if(!db.catInit){db.categories=DEFAULT_CATS.map(c=>({...c}));db.catInit=true}return db.categories||(db.categories=[])}
+const catById=id=>id?cats().find(c=>c.id===id):null;
+const validCat=id=>catById(id)?id:'';
+const catColor=id=>(catById(id)||{}).color||'';
+const catMap=()=>({hearings:'c_work',seva:'c_satsang',birthdays:'c_family',trips:'c_personal',dates:'c_social',...(db.settings.catMap||{})});
+const catCals=()=>db.settings.catCals!==false;
+const hiddenCats=()=>new Set(db.settings.catHide||[]);
+const catShown=id=>!hiddenCats().has(validCat(id)||'none');
+const evStyle=id=>{const c=catColor(validCat(id));return c?` style="background:color-mix(in srgb, ${c} 18%, transparent);color:inherit;box-shadow:inset 3px 0 0 ${c}"`:''};
+const rowStyle=id=>{const c=catColor(validCat(id));return c?` style="box-shadow:inset 3px 0 0 ${c};padding-left:8px"`:''};
+function catOpts(sel,blank){return `<option value="">${blank}</option>`+cats().map(c=>`<option value="${esc(c.id)}" ${c.id===sel?'selected':''}>${esc(c.name)}</option>`).join('')}
+function catFilterBar(){const hid=hiddenCats();if(!cats().length)return '';
+ return `<div class="row catbar" style="gap:6px;flex-wrap:wrap;margin:4px 0 12px">${cats().map(c=>`<button class="chip ${hid.has(c.id)?'':'on'}" data-act="catToggle" data-id="${esc(c.id)}"><i class="catdot" style="background:${esc(c.color)}"></i>${esc(c.name)}</button>`).join('')}<button class="chip ${hid.has('none')?'':'on'}" data-act="catToggle" data-id="none">No category</button></div>`}
+function catCard(){const m=catMap();
+ const mapSel=(k,l)=>`<label class="small muted" style="display:flex;flex-direction:column;gap:5px">${l}<select class="field" data-bind="settings.catMap.${k}" style="max-width:220px">${catOpts(validCat(m[k]),'No category')}</select></label>`;
+ return `<section class="card stack" style="gap:14px"><h3>Calendar categories</h3>
+  <p class="muted">Give events, to-dos and day plan slots a category. Each one has its own colour here${db.settings.gcal?', and its own calendar in Apple Calendar (for example <b>Sadhana · Work</b>) so you can colour it or hide it there too':''}.</p>
+  <div class="stack" style="gap:8px">${cats().map((c,i)=>`<div class="row catrow" style="gap:8px;align-items:center">
+    <select class="field" data-bind="categories.${i}.color" aria-label="Colour for ${esc(c.name)}" style="width:118px;box-shadow:inset 4px 0 0 ${esc(c.color)}">${CAT_COLOURS.map(([v,l])=>`<option value="${v}" ${v===c.color?'selected':''}>${l}</option>`).join('')}</select>
+    <input class="field" id="catname${i}" data-bind="categories.${i}.name" value="${esc(c.name)}" aria-label="Category name" style="flex:1;min-width:0">
+    <button class="iconbtn" data-act="catDel" data-id="${esc(c.id)}" aria-label="Delete ${esc(c.name)}">${ic('x')}</button></div>`).join('')}</div>
+  <div><button class="btn" data-act="catAdd">${ic('plus')}Add a category</button></div>
+  <div class="rule"></div><p class="small muted">Built-in items go into:</p>
+  <div class="stack" style="gap:10px">${mapSel('hearings','Court diary')}${mapSel('seva','Seva')}${mapSel('birthdays','Birthdays')}${mapSel('trips','Trips')}${mapSel('dates','Date nights')}</div>
+  ${db.settings.gcal?`<label class="cb"><input type="checkbox" class="check" data-bind="settings.catCals" ${catCals()?'checked':''}>A separate calendar for each category in Apple Calendar</label>`:''}
+ </section>`}
 
 /* ---------- seed (clearly marked examples) ---------- */
 function seed(){
@@ -827,7 +879,7 @@ function seed(){
   satnotes:[{id:uid(),title:'Things to read this month (example)',date:t,tags:['reading'],body:'Add anything you want to keep here.',ex}]
  };
 }
-function ensure(){const s=seed();for(const k in s){if(db[k]===undefined)db[k]=Array.isArray(s[k])?[]:(typeof s[k]==='object'?{}:s[k])}db.settings={...{name:'',currency:'£',rate:150,theme:'system'},...db.settings}}
+function ensure(){const s=seed();for(const k in s){if(db[k]===undefined)db[k]=Array.isArray(s[k])?[]:(typeof s[k]==='object'?{}:s[k])}db.settings={...{name:'',currency:'£',rate:150,theme:'system'},...db.settings};cats()}
 
 /* ---------- data accessors ---------- */
 const byId=(c,id)=>(db[c]||[]).find(x=>x.id===id);
@@ -958,14 +1010,14 @@ const WEEKLY_RITUAL=['Review last week and tick off wins','Brain-dump everything
 function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
  const tasks=db.todos.filter(t=>t.planned===d||t.due===d);
  const hours=[];for(let h=5;h<=22;h++){hours.push(pad(h)+':00');if(h<22)hours.push(pad(h)+':30')}
- const dur=x.dur||{},cover={};hours.forEach(h=>{const v=(x.schedule[h]||'').trim(),m=+dur[h];if(v&&m>30){const st=+h.slice(0,2)*60+(+h.slice(3));for(let t=st+30;t<st+m;t+=30){const k=pad(Math.floor(t/60))+':'+pad(t%60);if(!(x.schedule[k]||'').trim())cover[k]=v}}});
+ const dur=x.dur||{},cover={},coverCat={};hours.forEach(h=>{const v=(x.schedule[h]||'').trim(),m=+dur[h];if(v&&m>30){const st=+h.slice(0,2)*60+(+h.slice(3));for(let t=st+30;t<st+m;t+=30){const k=pad(Math.floor(t/60))+':'+pad(t%60);if(!(x.schedule[k]||'').trim()){cover[k]=v;coverCat[k]=(x.cat||{})[h]}}}});
  const wid=x.workout||'';const fp=(db.fitPlan[monday(d)]||{})[(parse(d).getDay()+6)%7]||{};const planned=fp.w?nameOf('workouts',fp.w):'';
  return `<div class="cardhead">${navBar('navDay',fLong(d)+' '+d.slice(0,4))}<span class="muted small">Daily framework: morning plan, evening review</span></div>
  <div class="spread">
   <div class="pg">
    <div class="row" style="justify-content:space-between"><span class="band">Date · ${fFull(d)}</span></div>
    ${(()=>{const xs=extOn(d);return xs.length?`<div><span class="band">From your calendar</span><div class="stack" style="gap:4px;margin-top:6px">${xs.map(e=>`<div class="small"><b class="num">${e.time?hLabel(e.time):'All day'}</b> · ${esc(e.title)}</div>`).join('')}</div></div>`:''})()}
-   <div><span class="band">Schedule</span><div class="lines" style="margin-top:6px">${hours.map(h=>`<div class="ln${h.endsWith(':30')?' half':''}"><span class="h">${hLabel(h)}</span><input class="hand" id="s${h}" data-bind="${P}.schedule.${h}" value="${esc(x.schedule[h]||'')}" placeholder="${cover[h]?'↳ '+esc(cover[h]):' '}" aria-label="${hLabel(h)}"><select class="dur" id="d${h}" data-bind="${P}.dur.${h}" aria-label="Length for ${hLabel(h)}">${DURS.map(([v,l])=>`<option value="${v}" ${String(dur[h]||'')===v?'selected':''}>${l}</option>`).join('')}</select></div>`).join('')}</div></div>
+   <div><span class="band">Schedule</span><div class="lines" style="margin-top:6px">${hours.map(h=>`<div class="ln${h.endsWith(':30')?' half':''}"${rowStyle((x.cat||{})[h]||coverCat[h])}><span class="h">${hLabel(h)}</span><input class="hand" id="s${h}" data-bind="${P}.schedule.${h}" value="${esc(x.schedule[h]||'')}" placeholder="${cover[h]?'↳ '+esc(cover[h]):' '}" aria-label="${hLabel(h)}"><select class="dur" id="d${h}" data-bind="${P}.dur.${h}" aria-label="Length for ${hLabel(h)}">${DURS.map(([v,l])=>`<option value="${v}" ${String(dur[h]||'')===v?'selected':''}>${l}</option>`).join('')}</select><select class="dcat" id="c${h}" data-bind="${P}.cat.${h}" aria-label="Category for ${hLabel(h)}">${catOpts((x.cat||{})[h],'Category')}</select></div>`).join('')}</div></div>
    <div><span class="band">Quick to-dos</span><div class="lines" style="margin-top:6px">${x.quick.map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.quick.${i}.done" ${q.done?'checked':''} aria-label="Done" style="margin-bottom:7px"><input class="hand" id="q${i}" data-bind="${P}.quick.${i}.t" value="${esc(q.t)}" ${q.done?'style="text-decoration:line-through;opacity:.6"':''}></div>`).join('')}</div></div>
   </div>
   <div class="pg">
@@ -1117,10 +1169,18 @@ function fInv(){const t=today();const inv=db.invoices.map(i=>({...i,status:(i.st
 function vOrg(){const s=S.sub.org;
  return head('Organisation','Calendar, birthdays, outfits, trips, restaurants and date nights.')+tabs('org',[['calendar','Event calendar'],['birthdays','Birthdays'],['outfits','Outfit planner'],['travel','Travel'],['restaurants','Restaurants'],['dates','Date planner']])+({calendar:oCal,birthdays:oBday,outfits:oOutfits,travel:oTravel,restaurants:oRest,dates:oDates}[s])()}
 function oCal(){const m=S.calMonth,first=m+'-01',start=monday(first),t=today();const cells=[];for(let i=0;i<42;i++){cells.push(addDays(start,i))}const rows=cells[35].slice(0,7)===m?42:35;
- const items=d=>{const a=[];db.events.filter(e=>e.date===d).forEach(e=>a.push(`<button class="ev" data-act="edit" data-col="events" data-id="${e.id}">${e.time?e.time+' ':''}${esc(e.title)}</button>`));db.birthdays.filter(b=>b.date&&b.date.slice(5)===d.slice(5)).forEach(b=>a.push(`<button class="ev b" data-act="edit" data-col="birthdays" data-id="${b.id}">${esc(b.name)}'s birthday</button>`));db.trips.filter(tr=>tr.start&&tr.start<=d&&(tr.end||tr.start)>=d).forEach(tr=>a.push(`<button class="ev t" data-act="edit" data-col="trips" data-id="${tr.id}">${esc(tr.destination)}</button>`));db.hearings.filter(h=>hLive(h)&&h.date<=d&&hEnd(h)>=d).forEach(h=>a.push(`<button class="ev hr" data-act="edit" data-col="hearings" data-id="${h.id}">⚖️ ${h.time&&h.date===d?h.time+' ':''}${esc(hName(h))}</button>`));db.dates.filter(x=>x.date===d).forEach(x=>a.push(`<button class="ev dt" data-act="edit" data-col="dates" data-id="${x.id}">${esc(x.idea)}</button>`));extOn(d).forEach(x=>a.push(`<span class="ev x" title="${esc(x.cal)}">${x.time?x.time+' ':''}${esc(x.title)}</span>`));return a.join('')};
+ const items=d=>{const a=[],cm=catMap(),ok=catShown;
+  db.events.filter(e=>e.date===d&&ok(e.category)).forEach(e=>a.push(`<button class="ev" data-act="edit" data-col="events" data-id="${e.id}"${evStyle(e.category)}>${e.time?e.time+' ':''}${esc(e.title)}</button>`));
+  if(ok(cm.birthdays))db.birthdays.filter(b=>b.date&&b.date.slice(5)===d.slice(5)).forEach(b=>a.push(`<button class="ev b" data-act="edit" data-col="birthdays" data-id="${b.id}"${evStyle(cm.birthdays)}>${esc(b.name)}'s birthday</button>`));
+  if(ok(cm.trips))db.trips.filter(tr=>tr.start&&tr.start<=d&&(tr.end||tr.start)>=d).forEach(tr=>a.push(`<button class="ev t" data-act="edit" data-col="trips" data-id="${tr.id}"${evStyle(cm.trips)}>${esc(tr.destination)}</button>`));
+  if(ok(cm.hearings))db.hearings.filter(h=>hLive(h)&&h.date<=d&&hEnd(h)>=d).forEach(h=>a.push(`<button class="ev hr" data-act="edit" data-col="hearings" data-id="${h.id}"${evStyle(cm.hearings)}>⚖️ ${h.time&&h.date===d?h.time+' ':''}${esc(hName(h))}</button>`));
+  if(ok(cm.dates))db.dates.filter(x=>x.date===d).forEach(x=>a.push(`<button class="ev dt" data-act="edit" data-col="dates" data-id="${x.id}"${evStyle(cm.dates)}>${esc(x.idea)}</button>`));
+  db.todos.filter(x=>x.due===d&&!x.done&&validCat(x.category)&&ok(x.category)).forEach(x=>a.push(`<button class="ev" data-act="edit" data-col="todos" data-id="${x.id}"${evStyle(x.category)}>☑️ ${esc(x.title)}</button>`));
+  extOn(d).filter(x=>ok(x.cat)).forEach(x=>a.push(`<span class="ev x" title="${esc(x.cal)}"${evStyle(x.cat)}>${x.time?x.time+' ':''}${esc(x.title)}</span>`));return a.join('')};
  return `<div class="cardhead">${navBar('navCal',fMonth(m))}${addBtn('events','New event',{date:t})}</div>
+ ${catFilterBar()}
  <div class="cal">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="dh">${d}</div>`).join('')}${cells.slice(0,rows).map(d=>`<div class="dc ${ymOf(d)!==m?'out':''} ${d===t?'today':''}" data-act="calDay" data-v="${d}" role="button" tabindex="0" aria-label="Add event on ${fFull(d)}"><span class="d">${parse(d).getDate()}</span>${items(d)}</div>`).join('')}</div>
- <div class="legend"><span><i style="background:var(--sage-soft)"></i>Event</span><span><i style="background:var(--clay-soft)"></i>Birthday</span><span><i style="background:var(--sand)"></i>Trip</span><span><i style="background:var(--rust-soft)"></i>Date night or hearing</span></div>`}
+ <div class="legend">${cats().map(c=>`<span><i style="background:${esc(c.color)}"></i>${esc(c.name)}</span>`).join('')}<span><i style="background:var(--sage-soft)"></i>No category</span></div>`}
 function oBday(){const t=today();const bs=db.birthdays.map(b=>({...b,next:nextBday(b.date)})).sort((a,b)=>a.next<b.next?-1:1);
  return `<div class="cardhead"><p class="muted">Sorted by who's next.</p>${addBtn('birthdays','Add birthday')}</div>
  ${bs.length?`<div class="cards">${bs.map(b=>{const n=diffDays(t,b.next);const age=b.yearKnown?(+b.next.slice(0,4))-(+b.date.slice(0,4)):null;return `<button class="ic" data-act="edit" data-col="birthdays" data-id="${b.id}"><span class="eyebrow">${fShort(b.next)}</span><span class="t">${esc(b.name)}</span><span class="row">${pill(n===0?'Today':n===1?'Tomorrow':`In ${n} days`,n<=14?'rust':'plain')}${age?pill('Turning '+age,'green'):''}</span>${b.gift?`<span class="x">Gift ideas: ${esc(b.gift)}</span>`:''}</button>`}).join('')}</div>`:'<div class="empty">No birthdays yet.</div>'}`}
@@ -1218,7 +1278,7 @@ function vSettings(){const s=db.settings;
   ${db.examples?`<p class="muted">Example entries are still showing.</p><div><button class="btn" data-act="clearEx">Remove all examples</button></div>`:''}
   <div><button class="btn danger" data-act="wipe" id="wipebtn">Erase everything</button></div>
  </section>
- ${calCard()}</div>`}
+ ${calCard()}${catCard()}</div>`}
 
 /* ---------- render ---------- */
 const GICON='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>';
@@ -1280,6 +1340,9 @@ const A={
  edit:(e,ev)=>{if(ev.target.closest('[data-act="toggleTodo"],[data-act="viewFile"],[data-act="toggle"]'))return;openForm(e.dataset.col,e.dataset.id)},
  closeModal:(e,ev)=>{if(e.classList.contains('scrim')&&ev.target!==e)return;closeModal()},
  delItem:e=>{if(e.dataset.sure){const {col,id}=MODAL;db[col]=db[col].filter(x=>x.id!==id);if(col==='projects')db.todos.forEach(t=>{if(t.project===id)t.project=''});save();closeModal();render();toast('Deleted')}else{e.dataset.sure=1;e.textContent='Tap again to delete'}},
+ catAdd:()=>{const n=cats().length;cats().push({id:'c_'+uid(),name:'New category',color:CAT_COLOURS[n%CAT_COLOURS.length][0]});save();render();setTimeout(()=>{const el=document.getElementById('catname'+n);if(el){el.focus();el.select()}},30)},
+ catDel:e=>{if(!e.dataset.sure){e.dataset.sure=1;toast('Tap the cross again to delete this category');return}db.categories=cats().filter(c=>c.id!==e.dataset.id);save();render();toast('Category deleted. Its items now have no category.')},
+ catToggle:e=>{const h=hiddenCats(),id=e.dataset.id;if(h.has(id))h.delete(id);else h.add(id);db.settings.catHide=[...h];save();render()},
  calConnect:()=>{db.settings.gcal=true;G.rev++;persist().then(()=>signIn(false,true,true))},
  calOff:()=>{db.settings.gcal=false;C.calId=null;C.ext={};save();render();toast('Calendar disconnected. The Sadhana calendar stays in Google Calendar until you delete it there.')},
  calNow:()=>{C.extAt={};C.list=null;runCal();toast('Syncing calendar')},
