@@ -335,6 +335,19 @@ tbody tr.nohover:hover td{background:none}
   h1{font-size:1.7rem}
 }
 .syncpill{display:none}
+.shoprow{display:grid;grid-template-columns:24px minmax(0,1fr) 70px 150px 30px 30px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.shoprow:last-child{border-bottom:0}
+.shoprow input.shopname,.shoprow input.shopqty{border:0;background:transparent;font:inherit;color:var(--ink);padding:4px 2px;min-width:0}
+.shoprow input.shopname{font-size:1rem}
+.shoprow input.shopqty{color:var(--muted);font-size:.85rem}
+.shoprow select.shopaisle{border:0;background:transparent;color:var(--muted);font:.78rem var(--sans);min-width:0}
+.shoprow.done input.shopname{text-decoration:line-through;color:var(--muted)}
+.shoprow .star{color:var(--line);font-size:1rem}.shoprow .star.on{color:#D08C3C}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.icw{display:flex;flex-direction:column;gap:6px;min-width:0}.icw>.ic{flex:1}.mealshop{align-self:flex-start;gap:6px}.mealshop svg,#mform [data-act=shopForm] svg{width:15px;height:15px;flex:none}
+.chip.usual{display:inline-flex;align-items:center;gap:2px;padding-right:4px}
+.chip.usual button{all:unset;cursor:pointer}.chip.usual .ux{opacity:.5;padding:0 4px}
+@media (max-width:600px){.shoprow{grid-template-columns:24px minmax(0,1fr) 56px 28px 28px}.shoprow select.shopaisle{display:none}}
 .hindu{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;margin:2px 0 4px;color:var(--muted)}
 .hindu .hd{font-weight:500;color:var(--clay)}
 .hrow{padding:12px 0;border-bottom:1px solid var(--line)}
@@ -421,6 +434,7 @@ const P={
  bar:'M12 4v16M7.5 20h9M5 7.5h14M5 7.5 2.5 13.5h5zM19 7.5l-2.5 6h5zM12 4v3.5',
  sat:'M12 19.5c-4.4 0-8-2.3-9-6.3 3.4-.2 6.6 1.3 9 4.1 2.4-2.8 5.6-4.3 9-4.1-1 4-4.6 6.3-9 6.3zM12 17.3c-2.2-3.3-2.2-7.6 0-11.3 2.2 3.7 2.2 8 0 11.3z',
  set:'M4 6.5h9M17 6.5h3M4 12h3M11 12h9M4 17.5h11M19 17.5h1M15 4.5v4M9 10v4M17 15.5v4',
+ cart:'M3 4h2.2l2.3 11.2a1.5 1.5 0 0 0 1.5 1.2h8.6a1.5 1.5 0 0 0 1.5-1.1L21 8H6.2M10 20.5a1 1 0 1 0 0-.01M17 20.5a1 1 0 1 0 0-.01',
  pin:'M12 21s-6-5.6-6-11a6 6 0 1 1 12 0c0 5.4-6 11-6 11zM12 12.5a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z',
  caret:'M6 9l6 6 6-6',
  left:'M15 6l-6 6 6 6', right:'M9 6l6 6-6 6',
@@ -898,6 +912,72 @@ function sHindu(){const t=today(),x=hinduOn(t),up=hinduUpcoming(120);
  <section class="card"><div class="cardhead"><h3>Ekadashi and festivals: next four months</h3></div><div class="stack" style="gap:0;margin-top:8px">${up.map(card).join('')||'<div class="empty">Nothing in the calendar for this period.</div>'}</div>
  <p class="small muted" style="margin-top:14px">Dates follow the official BAPS calendar. Hindu dates also show on the day plan and the month calendar${db.settings.gcal?', and Ekadashi and festivals can go into your calendar (Settings &gt; Calendar)':''}. ${t>'2027-11-30'?'<b>The built-in calendar ends in December 2027: ask for next year\'s dates to be added.</b>':''}</p></section>`}
 
+/* ---------- shopping list ----------
+   db.shopping: [{id,name,qty,aisle,done,src}], db.usuals: ['Milk', ...]. Synced like everything else. */
+const AISLES=['Fruit & veg','Bakery','Dairy & eggs','Meat & fish','Store cupboard','Spices & world foods','Frozen','Drinks','Snacks','Household','Toiletries & pharmacy','Other'];
+const AISLE_WORDS=[
+ ['Fruit & veg',/\b(apple|banana|berr|grape|lemon|lime|orange|mango|melon|pear|peach|plum|kiwi|avocado|tomato|cucumber|lettuce|spinach|kale|rocket|salad|onion|garlic|ginger|chilli|pepper|carrot|potato|sweet potato|broccoli|cauliflower|courgette|aubergine|mushroom|celery|leek|cabbage|herb|coriander|mint|basil|parsley|okra|bhindi|methi|dudhi|karela|veg|fruit|beans? sprouts?|spring onion)/i],
+ ['Bakery',/\b(bread|roti|naan|pitta|bagel|wrap|croissant|bun|rolls?|loaf|sourdough|cake|muffin)/i],
+ ['Dairy & eggs',/\b(milk|yoghurt|yogurt|curd|cheese|paneer|halloumi|butter|ghee|cream|egg|feta|mozzarella|creme|kefir|oat milk|almond milk)/i],
+ ['Meat & fish',/\b(chicken|beef|lamb|pork|mince|bacon|sausage|turkey|fish|salmon|cod|tuna|prawn|shrimp)/i],
+ ['Spices & world foods',/\b(masala|turmeric|haldi|cumin|jeera|mustard seed|hing|asafoetida|garam|chaat|curry|dal|daal|lentil|chana|moong|toor|urad|besan|atta|poha|rava|sooji|semolina|basmati|jaggery|tamarind|coconut milk|papad|pickle|achaar)/i],
+ ['Store cupboard',/\b(rice|pasta|noodle|oats|flour|sugar|salt|oil|vinegar|sauce|stock|tin|tinned|canned|chickpea|kidney bean|beans|quinoa|cereal|granola|honey|jam|peanut butter|nut|seed|chia|spice|tea|coffee|cocoa|stock cube|lentils)/i],
+ ['Frozen',/\b(frozen|ice cream|peas)/i],
+ ['Drinks',/\b(juice|water|squash|soda|cola|kombucha|wine|beer|sparkling)/i],
+ ['Snacks',/\b(crisps|chocolate|biscuit|cookie|bar|popcorn|snack|namkeen|chevdo)/i],
+ ['Household',/\b(bin bag|kitchen roll|foil|cling|washing|detergent|dishwasher|soap|sponge|bleach|cleaner|toilet roll|tissue|candle|batter(y|ies)|bulb)/i],
+ ['Toiletries & pharmacy',/\b(shampoo|conditioner|toothpaste|toothbrush|deodorant|razor|moistur|sunscreen|spf|plaster|paracetamol|ibuprofen|vitamin|pads|tampon|cotton|makeup|skincare|cleanser|serum)/i]];
+function guessAisle(n){if(/coconut milk|tinned|chopped tomatoes|canned/i.test(n))return 'Store cupboard';for(const [a,re] of AISLE_WORDS)if(re.test(n))return a;return 'Other'}
+function parseItem(txt){let t=txt.trim().replace(/\s+/g,' '),qty='';
+ let m=t.match(/^(\d+(?:\.\d+)?\s*(?:x|kg|g|ml|l|pack|packs|bunch|tins?|jars?|bottles?)?)\s+(.+)$/i);if(m){qty=m[1].trim();t=m[2]}
+ else{m=t.match(/^(.+?)\s+(?:x\s?(\d+)|(\d+)\s?x)$/i);if(m){t=m[1];qty=(m[2]||m[3])}}
+ return {name:t.charAt(0).toUpperCase()+t.slice(1),qty}}
+const shopList=()=>db.shopping||(db.shopping=[]);
+const usuals=()=>db.usuals||(db.usuals=['Milk','Bread','Eggs','Greek yoghurt','Bananas','Spinach','Onions','Tomatoes']);
+const shopKey=n=>String(n).toLowerCase().trim().replace(/(oes|ies|es|s)$/,m=>m==='ies'?'y':m==='oes'?'o':'');
+const sameItem=(a,b)=>shopKey(a)===shopKey(b);
+const onList=n=>shopList().some(x=>!x.done&&sameItem(x.name,parseItem(n).name));
+function addShop(txt,src){const p=parseItem(txt);if(!p.name)return false;
+ const ex=shopList().find(x=>sameItem(x.name,p.name));
+ if(ex){if(ex.done){ex.done=false}else if(p.qty&&!ex.qty)ex.qty=p.qty;return false}
+ shopList().push({id:'s_'+uid(),name:p.name,qty:p.qty,aisle:guessAisle(p.name),done:false,src:src||''});return true}
+function weekIngredients(w){const pl=(db.fitPlan||{})[w]||{},ing=[];
+ for(let i=0;i<7;i++)['b','l','d'].forEach(k=>{const m=byId('meals',(pl[i]||{})[k]);if(m)(m.ingredients||'').split('\n').map(s=>s.trim()).filter(Boolean).forEach(x=>{if(!ing.some(y=>y.toLowerCase()===x.toLowerCase()))ing.push(x)})});return ing}
+function vShop(){const L=shopList(),open=L.filter(x=>!x.done),got=L.filter(x=>x.done),w=monday(today()),ing=weekIngredients(w),missing=ing.filter(x=>!onList(x));
+ const row=x=>{const i=L.indexOf(x);return `<div class="shoprow ${x.done?'done':''}">
+   <input type="checkbox" class="check" data-act="shopTick" data-id="${x.id}" ${x.done?'checked':''} aria-label="Got ${esc(x.name)}">
+   <input class="shopname" id="sn_${x.id}" data-bind="shopping.${i}.name" value="${esc(x.name)}" aria-label="Item">
+   <input class="shopqty" id="sq_${x.id}" data-bind="shopping.${i}.qty" value="${esc(x.qty||'')}" placeholder="qty" aria-label="Quantity">
+   <select class="shopaisle" data-bind="shopping.${i}.aisle" aria-label="Aisle">${AISLES.map(a=>`<option ${a===x.aisle?'selected':''}>${a}</option>`).join('')}</select>
+   <button class="iconbtn star ${usuals().some(u=>sameItem(u,x.name))?'on':''}" data-act="shopUsual" data-id="${x.id}" aria-label="Keep as a usual" title="Keep as a usual">★</button>
+   <button class="iconbtn" data-act="shopDel" data-id="${x.id}" aria-label="Remove ${esc(x.name)}">${ic('x')}</button></div>`};
+ const groups=AISLES.map(a=>[a,open.filter(x=>(x.aisle||'Other')===a)]).filter(g=>g[1].length);
+ return head('Shopping list',open.length?`${open.length} thing${open.length===1?'':'s'} to get`:'All done. Add anything you need below.',`<button class="btn" data-act="shopCopy">Copy list</button>`)+`
+ <div class="grid2 split" style="align-items:start">
+  <div class="stack">
+   <section class="card"><input class="field" id="shopadd" data-add="shop" placeholder="Add an item and press Enter, e.g. 2 avocados" style="font-size:1rem" enterkeyhint="done">
+    <div class="stack" style="gap:14px;margin-top:14px">${groups.map(([a,xs])=>`<div><div class="sec" style="margin:0 0 4px">${a}</div>${xs.map(row).join('')}</div>`).join('')||'<div class="empty">Your list is empty.</div>'}</div>
+    ${got.length?`<div class="rule"></div><div class="row" style="justify-content:space-between"><span class="sec" style="margin:0">In the trolley (${got.length})</span><button class="btn sm" data-act="shopClear">Clear ticked items</button></div>${got.map(row).join('')}`:''}
+   </section>
+  </div>
+  <div class="stack">
+   <section class="card"><h3>From this week's meals</h3>
+    ${ing.length?`<p class="muted small" style="margin-top:4px">${ing.length} ingredient${ing.length===1?'':'s'} in the meals planned for the week of ${fShort(w)}.${missing.length?'':' All are on your list.'}</p>
+    ${missing.length?`<div class="chips" style="margin:10px 0">${missing.map(x=>`<button class="chip" data-act="shopAddOne" data-v="${esc(x)}">+ ${esc(x)}</button>`).join('')}</div><button class="btn primary" data-act="shopFromMeals">Add all ${missing.length}</button>`:''}`
+    :`<p class="muted small" style="margin-top:4px">Plan meals in Health &amp; fitness and their ingredients will show here.</p>`}
+   </section>
+   <section class="card"><h3>Usuals</h3><p class="muted small" style="margin-top:4px">Things you buy most weeks. Tap to add, or tap ★ on any item to keep it here.</p>
+    <div class="chips" style="margin:10px 0">${usuals().map((u,i)=>`<span class="chip usual ${onList(u)?'on':''}"><button data-act="shopAddOne" data-v="${esc(u)}">${onList(u)?'✓':'+'} ${esc(u)}</button><button class="ux" data-act="usualDel" data-i="${i}" aria-label="Remove ${esc(u)} from usuals">×</button></span>`).join('')}</div>
+    <button class="btn" data-act="shopUsuals">Add all usuals</button>
+   </section>
+  </div>
+ </div>`}
+function shopText(){const open=shopList().filter(x=>!x.done);return AISLES.map(a=>{const xs=open.filter(x=>(x.aisle||'Other')===a);return xs.length?`${a}\n`+xs.map(x=>`- ${x.name}${x.qty?' ('+x.qty+')':''}`).join('\n'):''}).filter(Boolean).join('\n\n')}
+const mealIng=m=>((m&&m.ingredients)||'').split('\n').map(s=>s.trim()).filter(Boolean);
+function mealShopBtn(m){const ing=mealIng(m);if(!ing.length)return '';const miss=ing.filter(x=>!onList(x)).length;
+ return miss?`<button class="btn sm mealshop" data-act="shopMeal" data-id="${m.id}">${ic('cart')}Add ${miss===ing.length?'ingredients':miss+' more'} to shopping list</button>`:`<button class="btn sm ghost mealshop" data-act="nav" data-v="shop">✓ On your shopping list</button>`}
+function addIngs(list,src){let n=0;list.forEach(x=>{if(addShop(x,src))n++});save();render();toast(n?`Added ${n} to your shopping list`:'Already on your shopping list')}
+
 /* ---------- seed (clearly marked examples) ---------- */
 function seed(){
  const t=today(),ym=ymOf(t),y=t.slice(0,4),wk=monday(t),ex=true;
@@ -984,8 +1064,8 @@ function getPath(path){return path.split('.').reduce((o,k)=>o==null?undefined:o[
 
 /* ---------- ui state ---------- */
 const S={view:'home',sub:{planning:'day',growth:'habits',health:'plan',finance:'overview',org:'calendar',bar:'diary',sat:'hindu'},date:today(),week:monday(today()),month:ymOf(today()),year:today().slice(0,4),homeTab:'planned',shut:{},f:{todo:'open',tag:'',q:'',txMonth:ymOf(today()),proj:null,rest:'All',seva:'Open',wl:'All',hd:'Upcoming'},calMonth:ymOf(today()),hMonth:ymOf(today()),moodYear:today().slice(0,4)};
-const NAV=[['home','Home'],['planning','Planning'],['projects','Projects & to-dos'],['growth','Personal growth'],['health','Health & fitness'],['finance','Finance'],['org','Organisation'],['bar','Barrister billing'],['sat','Satsang'],['settings','Settings']];
-const NICON={home:'home',planning:'plan',projects:'proj',growth:'growth',health:'health',finance:'fin',org:'org',bar:'bar',sat:'sat',settings:'set'};
+const NAV=[['home','Home'],['planning','Planning'],['projects','Projects & to-dos'],['growth','Personal growth'],['health','Health & fitness'],['shop','Shopping list'],['finance','Finance'],['org','Organisation'],['bar','Barrister billing'],['sat','Satsang'],['settings','Settings']];
+const NICON={home:'home',planning:'plan',projects:'proj',growth:'growth',health:'health',shop:'cart',finance:'fin',org:'org',bar:'bar',sat:'sat',settings:'set'};
 
 /* ---------- small components ---------- */
 const pill=(t,tone='')=>t?`<span class="pill ${tone}">${esc(t)}</span>`:'';
@@ -1231,11 +1311,11 @@ function hPlan(){const w=S.week,pl=db.fitPlan[w]||{};const days=[0,1,2,3,4,5,6];
  const mins=sum(days,i=>{const wo=byId('workouts',(pl[i]||{}).w);return wo?wo.duration:0});
  return `<div class="cardhead">${navBar('navWeek','Week of '+fShort(w))}<span class="muted small num">${mins} minutes of movement planned</span></div>
  <div class="tblw"><table><thead><tr><th>Day</th><th>Workout</th><th>Breakfast</th><th>Lunch</th><th>Dinner</th></tr></thead><tbody>${days.map(i=>`<tr class="nohover"><td class="t">${DOW[i].slice(0,3)} ${parse(addDays(w,i)).getDate()}</td><td>${sel(i,'w','workouts',()=>true)}</td><td>${sel(i,'b','meals',m=>m.type==='Breakfast'||m.type==='Snack')}</td><td>${sel(i,'l','meals',m=>m.type!=='Breakfast')}</td><td>${sel(i,'d','meals',m=>m.type!=='Breakfast')}</td></tr>`).join('')}</tbody></table></div>
- <section class="card"><h3>Shopping list</h3><p>Built from the meals planned above.</p><div style="columns:3 180px;margin-top:10px">${Object.keys(ing).sort().map(x=>`<label class="todo" style="border:0;padding:4px 0;break-inside:avoid"><input type="checkbox" class="check" data-bind="shop.${w}.${x.replace(/\./g,'')}" ${getPath(`shop.${w}.${x.replace(/\./g,'')}`)?'checked':''}><span>${esc(x)}${ing[x]>1?` <span class="muted small">×${ing[x]}</span>`:''}</span></label>`).join('')||'<span class="muted small">Plan some meals to build your list.</span>'}</div></section>`}
+ <section class="card"><h3>Shopping list</h3><p>${(()=>{const ing=weekIngredients(w),miss=ing.filter(x=>!onList(x));return ing.length?(miss.length?`${miss.length} ingredient${miss.length===1?'':'s'} from these meals ${miss.length===1?'is':'are'} not on your shopping list yet.`:'Every ingredient from these meals is on your shopping list.'):'Plan some meals and their ingredients can go straight onto your shopping list.'})()}</p><div class="row" style="margin-top:10px;gap:8px">${weekIngredients(w).some(x=>!onList(x))?`<button class="btn primary" data-act="shopFromMealsW" data-w="${w}">Add them to my shopping list</button>`:''}<button class="btn" data-act="nav" data-v="shop">Open shopping list</button></div></section>`}
 function hLib(col){const isW=col==='workouts';const types=isW?['All','Favourites','Pilates','Strength','Cardio','Yoga','Walk']:['All','Favourites','Breakfast','Lunch','Dinner','Snack'];const fk='lib'+col;const f=S.f[fk]||'All';
  const items=db[col].filter(x=>f==='All'||(f==='Favourites'?x.fav:x.type===f));
  return `<div class="cardhead"><div class="row">${types.map(t=>`<button class="chip ${f===t?'on':''}" data-act="filt" data-k="${fk}" data-v="${t}">${t}</button>`).join('')}</div>${addBtn(col,isW?'New workout':'New meal',{type:isW?'Pilates':'Dinner'})}</div>
- ${items.length?`<div class="cards">${items.map(x=>`<button class="ic" data-act="edit" data-col="${col}" data-id="${x.id}"><span class="row" style="justify-content:space-between">${pill(x.type,'green')}${x.fav?`<span style="color:var(--clay)" title="Favourite">${ic('star')}</span>`:''}</span><span class="t">${esc(x.name)}</span><span class="muted small num">${(isW?x.duration:x.prep)||'—'} min</span><span class="x">${esc(isW?x.exercises:x.ingredients)}</span></button>`).join('')}</div>`:'<div class="empty">Nothing here yet.</div>'}`}
+ ${items.length?`<div class="cards">${items.map(x=>`<div class="icw"><button class="ic" data-act="edit" data-col="${col}" data-id="${x.id}"><span class="row" style="justify-content:space-between">${pill(x.type,'green')}${x.fav?`<span style="color:var(--clay)" title="Favourite">${ic('star')}</span>`:''}</span><span class="t">${esc(x.name)}</span><span class="muted small num">${(isW?x.duration:x.prep)||'—'} min</span><span class="x">${esc(isW?x.exercises:x.ingredients)}</span></button>${isW?'':mealShopBtn(x)}</div>`).join('')}</div>`:'<div class="empty">Nothing here yet.</div>'}`}
 
 /* ---------- FINANCE ---------- */
 function vFinance(){const s=S.sub.finance;
@@ -1379,7 +1459,7 @@ function signBanner(){if(!configured()||tokenOk())return '';
  const again=!!ls.get('sadhana.signedIn');
  return `<div class="signin"><p>${again?'Reconnect to Google Drive to sync your latest changes.':'Sign in with Google to keep this planner in your own Google Drive and use it on your Mac and iPhone.'}</p><button class="btn primary gbtn" data-act="signIn">${GICON}${again?'Reconnect':'Sign in with Google'}</button></div>`}
 
-const VIEWS={home:vHome,planning:vPlanning,projects:vProjects,growth:vGrowth,health:vHealth,finance:vFinance,org:vOrg,bar:vBar,sat:vSat,settings:vSettings};
+const VIEWS={home:vHome,planning:vPlanning,projects:vProjects,growth:vGrowth,health:vHealth,shop:vShop,finance:vFinance,org:vOrg,bar:vBar,sat:vSat,settings:vSettings};
 function renderNav(){document.getElementById('nav').innerHTML=NAV.map(([k,l])=>`<button class="${S.view===k?'on':''}" data-act="nav" data-v="${k}">${ic(NICON[k])}<span>${l}</span></button>`).join('')}
 function render(){const a=document.activeElement,aid=a&&a.id,pos=a&&a.selectionStart;
  renderNav();document.getElementById('view').innerHTML=signBanner()+VIEWS[S.view]();{const ts=document.getElementById('tmslot');if(ts)ts.innerHTML=(S.view==='home'||S.view==='bar')?'':tmPill()}tickClock();hydrate();
@@ -1403,6 +1483,7 @@ function fieldHtml(f,v){const id='f_'+f.k,cls=`${f.full||f.t==='textarea'?'full'
 let MODAL=null;
 function openForm(col,id,preset){const sc=SCHEMA[col];const item=id?byId(col,id):{...(preset||{})};MODAL={col,id,clear:{}};
  document.getElementById('modalroot').innerHTML=`<div class="scrim" data-act="closeModal"><form class="modal" id="mform" role="dialog" aria-modal="true" aria-label="${id?'Edit':'New'} ${sc.name}"><header><h2>${id?'Edit':'New'} ${sc.name}</h2>${item.ex?'<p class="small" style="color:var(--clay);margin-top:4px">Example entry</p>':''}</header><div class="body">${sc.f.map(f=>fieldHtml(f,item[f.k])).join('')}</div><p class="small" id="ferr" style="color:var(--rust);padding:0 24px" hidden></p><footer>${id?`<button type="button" class="btn danger del" data-act="delItem">Delete</button>`:''}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button type="submit" class="btn primary">Save</button></footer></form></div>`;
+ if(col==='meals'){const t=document.getElementById('f_ingredients');if(t){const b=document.createElement('button');b.type='button';b.className='btn sm';b.style.marginTop='8px';b.dataset.act='shopForm';b.innerHTML=ic('cart')+'Add these to my shopping list';t.insertAdjacentElement('afterend',b)}}
  setTimeout(()=>{const f=document.querySelector('#mform input:not([type=file]),#mform textarea');if(f)f.focus()},30)}
 function closeModal(){document.getElementById('modalroot').innerHTML='';MODAL=null}
 async function submitForm(){const {col,id}=MODAL;const sc=SCHEMA[col];const out={};
@@ -1442,6 +1523,18 @@ const A={
  tmStop:()=>tmLog(),
  tmDiscard:e=>{if(!e.dataset.sure){e.dataset.sure=1;e.textContent='Tap again to discard';return}db.timer=null;save();render();toast('Timer discarded')},
  tmGo:()=>{S.view='bar';render();window.scrollTo(0,0)},
+ shopMeal:e=>{addIngs(mealIng(byId('meals',e.dataset.id)),'meals')},
+ shopForm:()=>{const t=document.getElementById('f_ingredients');const l=(t?t.value:'').split('\n').map(s=>s.trim()).filter(Boolean);if(!l.length){toast('Add some ingredients first');return}let n=0;l.forEach(x=>{if(addShop(x,'meals'))n++});save();toast(n?`Added ${n} to your shopping list`:'Already on your shopping list')},
+ shopTick:e=>{const x=shopList().find(i=>i.id===e.dataset.id);if(x){x.done=!x.done;save();render()}},
+ shopDel:e=>{db.shopping=shopList().filter(i=>i.id!==e.dataset.id);save();render()},
+ shopClear:()=>{db.shopping=shopList().filter(i=>!i.done);save();render();toast('Cleared')},
+ shopAddOne:e=>{addShop(e.dataset.v,'');save();render()},
+ shopFromMeals:()=>{let n=0;weekIngredients(monday(today())).forEach(x=>{if(addShop(x,'meals'))n++});save();render();toast(n?`Added ${n} ingredient${n===1?'':'s'}`:'Already on your list')},
+ shopFromMealsW:e=>{let n=0;weekIngredients(e.dataset.w).forEach(x=>{if(addShop(x,'meals'))n++});save();render();toast(n?`Added ${n} to your shopping list`:'Already on your list')},
+ shopUsuals:()=>{let n=0;usuals().forEach(x=>{if(addShop(x,'usual'))n++});save();render();toast(n?`Added ${n} usual${n===1?'':'s'}`:'Already on your list')},
+ shopUsual:e=>{const x=shopList().find(i=>i.id===e.dataset.id);if(!x)return;const u=usuals(),k=u.findIndex(n=>n.toLowerCase()===x.name.toLowerCase());if(k>=0)u.splice(k,1);else u.push(x.name);save();render()},
+ usualDel:e=>{usuals().splice(+e.dataset.i,1);save();render()},
+ shopCopy:async()=>{const t=shopText();if(!t){toast('Nothing to copy');return}try{await navigator.clipboard.writeText(t);toast('List copied: paste it into a message')}catch(x){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast('List copied')}catch(y){toast('Could not copy')}ta.remove()}},
  calConnect:()=>{db.settings.gcal=true;G.rev++;persist().then(()=>signIn(false,true,true))},
  calOff:()=>{db.settings.gcal=false;C.calId=null;C.ext={};save();render();toast('Calendar disconnected. The Sadhana calendar stays in Google Calendar until you delete it there.')},
  calNow:()=>{C.extAt={};C.list=null;runCal();toast('Syncing calendar')},
@@ -1493,6 +1586,7 @@ const A={
  wipe:e=>{if(e.dataset.sure){db=seed();db.examples=false;for(const k in db){if(Array.isArray(db[k]))db[k]=db[k].filter(x=>!x.ex)}db.habitLog={};db.days={};db.months={};db.years={};db.fitPlan={};save();render();toast('Erased')}else{e.dataset.sure=1;e.textContent='Tap again to erase everything'}}
 };
 const ADD={
+ shop:v=>{const n=addShop(v,'');if(!n)toast('Already on your list')},
  matter:v=>db.matters.push({id:'m_'+uid(),name:v}),
  dayTodo:(v)=>db.todos.push({id:uid(),title:v,priority:'Normal',planned:S.date}),
  projTodo:(v,el)=>db.todos.push({id:uid(),title:v,priority:'Normal',project:el.dataset.id}),
