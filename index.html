@@ -515,7 +515,7 @@ const configured=()=>!!(CFG.googleClientId&&!/PASTE/.test(CFG.googleClientId));
 function signIn(silent,consent,withCal){
  if(!configured()){toast('Add your Google client ID to config.js first');return}
  const state=uid()+uid();ss.set('sadhana.state',state);if(silent)ss.set('sadhana.silentAt',String(Date.now()));
- persist().then(()=>{const p=new URLSearchParams({client_id:CFG.googleClientId,redirect_uri:appUrl(),response_type:'token',scope:[SCOPE,...((withCal||wantCal())?CAL_SCOPES:[])].join(' '),include_granted_scopes:'true',state,prompt:silent?'none':(consent?'consent':'select_account')});
+ persist().then(()=>{const p=new URLSearchParams({client_id:CFG.googleClientId,redirect_uri:appUrl(),response_type:'token',scope:[SCOPE,...((withCal||wantCal())?CAL_SCOPES:[])].join(' '),include_granted_scopes:'true',state});const hint=ls.get('sadhana.email');if(hint)p.set('login_hint',hint);const pr=silent?'none':consent?'consent':(hint?'':'select_account');if(pr)p.set('prompt',pr);
   location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p})}
 function takeToken(){
  const h=new URLSearchParams(location.hash.slice(1));if(!h.get('access_token')&&!h.get('error'))return null;
@@ -526,7 +526,9 @@ function takeToken(){
  G.problem=null;G.scopes=h.get('scope')||'';G.token=h.get('access_token');G.exp=Date.now()+((+h.get('expires_in')||3600)-120)*1000;
  ls.set('sadhana.token',JSON.stringify({t:G.token,e:G.exp,s:G.scopes}));ls.set('sadhana.signedIn','1');return 'ok'}
 function loadToken(){try{const j=JSON.parse(ls.get('sadhana.token')||'null');if(j&&j.e>Date.now()){G.token=j.t;G.exp=j.e;G.scopes=j.s||''}}catch(e){}}
-function signOut(){G.token=null;G.exp=0;ls.del('sadhana.token');ls.del('sadhana.signedIn')}
+function signOut(){G.token=null;G.exp=0;ls.del('sadhana.token');ls.del('sadhana.signedIn');ls.del('sadhana.email')}
+/* remember which Google account she uses, so renewing access never needs the account picker */
+function learnEmail(){if(ls.get('sadhana.email')||!tokenOk())return;api(DRIVE+'/about?fields=user(emailAddress)').then(r=>r.json()).then(j=>{if(j&&j.user&&j.user.emailAddress)ls.set('sadhana.email',j.user.emailAddress)}).catch(()=>{})}
 
 async function api(url,opt={}){
  if(!tokenOk())throw {code:'auth'};
@@ -583,7 +585,7 @@ async function sync(){
  if(!tokenOk()){
   if(ls.get('sadhana.signedIn')&&navigator.onLine!==false&&!busy()&&Date.now()-(+ss.get('sadhana.silentAt')||0)>300000){signIn(true);return}
   return setStatus(ls.get('sadhana.signedIn')?'Tap to reconnect':'Saved on this device')}
- G.syncing=true;setStatus('Syncing…');
+ G.syncing=true;setStatus('Syncing…');learnEmail();
  try{
   await uploadPending();
   let m=null;
