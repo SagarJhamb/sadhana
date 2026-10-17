@@ -510,12 +510,38 @@ const appUrl=()=>location.origin+location.pathname.replace(/index\.html$/,'');
 const dirty=()=>G.rev!==G.syncedRev;
 const tokenOk=()=>!!G.token&&Date.now()<G.exp;
 const configured=()=>!!(CFG.googleClientId&&!/PASTE/.test(CFG.googleClientId));
+/* Staying signed in. Browser-only apps get one-hour passes from Google. If config.js names a token helper
+   (a tiny Cloudflare Worker you own, which only swaps codes for passes and stores nothing), the app gets a
+   long-lasting "refresh" pass instead and quietly renews itself, so she never has to sign in again. */
+const HELPER=()=>(CFG.tokenHelper||'').replace(/\/+$/,'');
+const hasRT=()=>!!(HELPER()&&ls.get('sadhana.rt'));
+async function helper(path,body){const r=await fetch(HELPER()+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});let j={};try{j=await r.json()}catch(e){}return {ok:r.ok,j}}
+function setToken(t,exp,scopes){G.problem=null;G.token=t;G.exp=Date.now()+((+exp||3600)-120)*1000;if(scopes)G.scopes=scopes;ls.set('sadhana.token',JSON.stringify({t:G.token,e:G.exp,s:G.scopes}));ls.set('sadhana.signedIn','1')}
+let renewing=null;
+function renew(){if(!hasRT())return Promise.resolve(false);if(renewing)return renewing;
+ renewing=(async()=>{try{const {ok,j}=await helper('/refresh',{refresh_token:ls.get('sadhana.rt')});
+   if(ok&&j.access_token){setToken(j.access_token,j.expires_in,j.scope);return true}
+   if(j.error==='invalid_grant'){ls.del('sadhana.rt');setStatus('Tap to reconnect')}return false}
+  catch(e){return false}finally{setTimeout(()=>renewing=null,0)}})();return renewing}
+const b64u=b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+async function takeCode(){const q=new URLSearchParams(location.search);if(!q.get('code')&&!q.get('error'))return null;
+ history.replaceState(null,'',appUrl());
+ if(q.get('state')!==ss.get('sadhana.state'))return 'bad_state';
+ if(q.get('error'))return q.get('error');
+ try{const {ok,j}=await helper('/exchange',{code:q.get('code'),redirect_uri:appUrl(),code_verifier:ss.get('sadhana.pkce')||undefined});
+  if(!ok||!j.access_token)return j.error||'exchange_failed';
+  if(j.scope&&!j.scope.split(' ').includes(SCOPE)){G.problem='scope';return 'scope'}
+  setToken(j.access_token,j.expires_in,j.scope||'');if(j.refresh_token)ls.set('sadhana.rt',j.refresh_token);return 'ok'}
+ catch(e){return 'offline'}}
 
 /* sign-in: a plain redirect to Google and back, which works inside an iPhone home-screen app */
 function signIn(silent,consent,withCal){
  if(!configured()){toast('Add your Google client ID to config.js first');return}
  const state=uid()+uid();ss.set('sadhana.state',state);if(silent)ss.set('sadhana.silentAt',String(Date.now()));
- persist().then(()=>{const p=new URLSearchParams({client_id:CFG.googleClientId,redirect_uri:appUrl(),response_type:'token',scope:[SCOPE,...((withCal||wantCal())?CAL_SCOPES:[])].join(' '),include_granted_scopes:'true',state});const hint=ls.get('sadhana.email');if(hint)p.set('login_hint',hint);const pr=silent?'none':consent?'consent':(hint?'':'select_account');if(pr)p.set('prompt',pr);
+ const code=!!HELPER()&&!silent;
+ persist().then(async()=>{const p=new URLSearchParams({client_id:CFG.googleClientId,redirect_uri:appUrl(),response_type:code?'code':'token',scope:[SCOPE,...((withCal||wantCal())?CAL_SCOPES:[])].join(' '),include_granted_scopes:'true',state});
+  if(code){p.set('access_type','offline');consent=true;
+   try{const v=b64u(crypto.getRandomValues(new Uint8Array(32)));ss.set('sadhana.pkce',v);p.set('code_challenge',b64u(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))));p.set('code_challenge_method','S256')}catch(e){ss.set('sadhana.pkce','')}}const hint=ls.get('sadhana.email');if(hint)p.set('login_hint',hint);const pr=silent?'none':consent?'consent':(hint?'':'select_account');if(pr)p.set('prompt',pr);
   location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p})}
 function takeToken(){
  const h=new URLSearchParams(location.hash.slice(1));if(!h.get('access_token')&&!h.get('error'))return null;
@@ -526,14 +552,14 @@ function takeToken(){
  G.problem=null;G.scopes=h.get('scope')||'';G.token=h.get('access_token');G.exp=Date.now()+((+h.get('expires_in')||3600)-120)*1000;
  ls.set('sadhana.token',JSON.stringify({t:G.token,e:G.exp,s:G.scopes}));ls.set('sadhana.signedIn','1');return 'ok'}
 function loadToken(){try{const j=JSON.parse(ls.get('sadhana.token')||'null');if(j&&j.e>Date.now()){G.token=j.t;G.exp=j.e;G.scopes=j.s||''}}catch(e){}}
-function signOut(){G.token=null;G.exp=0;ls.del('sadhana.token');ls.del('sadhana.signedIn');ls.del('sadhana.email')}
+function signOut(){const rt=ls.get('sadhana.rt');if(rt&&HELPER())helper('/revoke',{token:rt}).catch(()=>{});G.token=null;G.exp=0;['sadhana.token','sadhana.signedIn','sadhana.email','sadhana.rt'].forEach(k=>ls.del(k))}
 /* remember which Google account she uses, so renewing access never needs the account picker */
 function learnEmail(){if(ls.get('sadhana.email')||!tokenOk())return;api(DRIVE+'/about?fields=user(emailAddress)').then(r=>r.json()).then(j=>{if(j&&j.user&&j.user.emailAddress)ls.set('sadhana.email',j.user.emailAddress)}).catch(()=>{})}
 
-async function api(url,opt={}){
- if(!tokenOk())throw {code:'auth'};
+async function api(url,opt={},again){
+ if(!tokenOk()&&!(await renew()))throw {code:'auth'};
  let r;try{r=await fetch(url,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+G.token}})}catch(e){throw {code:'offline'}}
- if(r.status===401){G.token=null;ls.del('sadhana.token');throw {code:'auth'}}
+ if(r.status===401){G.token=null;ls.del('sadhana.token');if(!again&&await renew())return api(url,opt,true);throw {code:'auth'}}
  if(r.status===403||r.status===429){let reason='';try{const j=await r.json();const er=j.error||{};reason=[(er.errors||[]).map(x=>x.reason).join(' '),(er.details||[]).map(d=>d.reason||'').join(' '),er.status||'',er.message||''].join(' ')}catch(e){}
   console.warn('Google Drive refused the request:',r.status,reason);
   if(/accessNotConfigured|SERVICE_DISABLED|has not been used|is disabled/i.test(reason))throw {code:'api_off'};
@@ -582,8 +608,9 @@ function refreshView(){if(busy()){G.remoteWaiting=true;return}G.remoteWaiting=fa
 async function sync(){
  if(!configured())return setStatus('Saved on this device');
  if(G.syncing){G.again=true;return}
+ if(!tokenOk())await renew();
  if(!tokenOk()){
-  if(ls.get('sadhana.signedIn')&&navigator.onLine!==false&&!busy()&&Date.now()-(+ss.get('sadhana.silentAt')||0)>300000){signIn(true);return}
+  if(!hasRT()&&ls.get('sadhana.signedIn')&&navigator.onLine!==false&&!busy()&&Date.now()-(+ss.get('sadhana.silentAt')||0)>300000){signIn(true);return}
   return setStatus(ls.get('sadhana.signedIn')?'Tap to reconnect':'Saved on this device')}
  G.syncing=true;setStatus('Syncing…');learnEmail();
  try{
@@ -625,7 +652,7 @@ function fileIds(){const ids=new Set();for(const k in db)if(Array.isArray(db[k])
 
 async function boot(){
  await local.open();
- const tk=takeToken();if(!G.token)loadToken();
+ let tk=takeToken();if(!tk&&HELPER())tk=await takeCode();if(!G.token)loadToken();if(!tokenOk())await renew();
  const st=await local.get('kv','state');
  if(st&&st.db){db=st.db;G.base=st.base||null;G.fileId=st.fileId||null;G.version=st.version||null;G.rev=st.rev||0;G.syncedRev=st.syncedRev||0;G.pendingFiles=st.pendingFiles||[]}
  if(!db&&tokenOk()){ // first open on a new device: look for her planner in Drive before making a new one
@@ -640,6 +667,7 @@ async function boot(){
  window.addEventListener('online',()=>sync());
  setInterval(()=>{if(document.visibilityState==='visible'){if(G.remoteWaiting&&!busy())refreshView();sync()}},60000);
  setInterval(()=>{if(G.remoteWaiting&&!busy())refreshView()},3000);
+ setInterval(()=>{if(hasRT()&&G.exp-Date.now()<600000)renew()},120000);
  return {fresh,tk}}
 
 /* automatic backups: a full copy of the planner saved to her Drive every 14 days, newest 6 kept (about 3 months) */
@@ -1457,7 +1485,9 @@ function vSettings(){const s=db.settings;
 
 /* ---------- render ---------- */
 const GICON='<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>';
-function signBanner(){if(!configured()||tokenOk())return '';
+function signBanner(){if(!configured())return '';
+ if(tokenOk()){return HELPER()&&!hasRT()?`<div class="signin"><p>Sign in once more and you will stay signed in on this device from now on.</p><button class="btn primary gbtn" data-act="signIn">${GICON}Keep me signed in</button></div>`:''}
+ if(hasRT())return '';
  const again=!!ls.get('sadhana.signedIn');
  return `<div class="signin"><p>${again?'Reconnect to Google Drive to sync your latest changes.':'Sign in with Google to keep this planner in your own Google Drive and use it on your Mac and iPhone.'}</p><button class="btn primary gbtn" data-act="signIn">${GICON}${again?'Reconnect':'Sign in with Google'}</button></div>`}
 
