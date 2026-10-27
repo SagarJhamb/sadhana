@@ -317,6 +317,16 @@ tbody tr.nohover:hover td{background:none}
 .modal footer .del{margin-right:auto}
 .toast{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:9px 16px;border-radius:10px;font-size:.88rem;z-index:60;opacity:0;transform:translateY(6px);transition:.2s;pointer-events:none}
 .toast.show{opacity:1;transform:none}
+.toast.act{pointer-events:auto;display:flex;align-items:center;gap:12px}
+.toast .tundo{border:0;background:none;color:var(--paper);font:600 .88rem var(--sans);text-decoration:underline;text-underline-offset:3px;padding:2px 0;cursor:pointer}
+.movebtn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--paper);color:var(--muted);font:500 .76rem var(--sans);padding:3px 8px 3px 10px;border-radius:99px;cursor:pointer;white-space:nowrap}
+.movebtn:hover{color:var(--sage-deep);border-color:var(--sage)}
+.movebtn svg{width:13px;height:13px}
+.movebtn.line{border:0;background:none;padding:2px 4px;opacity:.55;flex:none;margin-bottom:5px}
+.movebtn.line:hover{opacity:1}
+.ln.nohour:has(.movebtn){grid-template-columns:24px 1fr auto}
+.todo{flex-wrap:wrap;row-gap:4px}.todo .tt{flex:1 1 180px}
+.movall{margin:8px 0 4px;gap:6px}.movall svg{width:14px;height:14px}
 .exnote{font-size:.84rem;color:var(--clay);background:var(--clay-soft);border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 
 @media (max-width:1100px){.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -1112,7 +1122,24 @@ const exBanner=()=>db.examples?`<div class="exnote"><span>This planner opens wit
 function table(col,rows,cols,empty){if(!rows.length)return `<div class="empty">${empty}</div>`;
  return `<div class="tblw"><table><thead><tr>${cols.map(c=>`<th class="${c.r?'r':''}">${c.l}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr data-act="edit" data-col="${col}" data-id="${r.id}">${cols.map(c=>`<td class="${c.r?'r':''} ${c.t?'t':''}">${c.f?c.f(r):esc(r[c.k])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
 const navBar=(act,label)=>`<div class="row"><button class="iconbtn" data-act="${act}" data-n="-1" aria-label="Previous">${ic('left')}</button><h2 style="min-width:0">${label}</h2><button class="iconbtn" data-act="${act}" data-n="1" aria-label="Next">${ic('right')}</button><button class="btn sm" data-act="${act}" data-n="0">Today</button></div>`;
-const todoRow=t=>{const od=t.due&&t.due<today()&&!t.done;return `<div class="todo ${t.done?'done':''}"><input type="checkbox" class="check" data-act="toggleTodo" data-id="${t.id}" ${t.done?'checked':''} aria-label="Done"><button class="tt" data-act="edit" data-col="todos" data-id="${t.id}">${esc(t.title)}</button><span class="meta">${t.project?pill(nameOf('projects',t.project),'plain'):''}${t.due?pill((od?'Overdue ':'Due ')+fShort(t.due),od?'rust':''):''}</span></div>`};
+/* moving unfinished things on: "today" items go to tomorrow; on a future day in the planner, to the next day */
+const moveTarget=from=>from<today()?today():addDays(from,1);
+const dayWord=d=>d===today()?'today':d===addDays(today(),1)?'tomorrow':fShort(d);
+const moveLabel=from=>from<today()?'Today':from===today()?'Tomorrow':'Next day';
+const isOn=(t,from)=>!t.done&&((t.planned&&t.planned<=from)||(t.due&&t.due<=from));
+const todoRow=(t,from)=>{from=typeof from==='string'?from:today();const od=t.due&&t.due<today()&&!t.done;const mv=isOn(t,from)?`<button class="movebtn" data-act="moveTodo" data-id="${t.id}" data-from="${from}" title="Move to ${fShort(moveTarget(from))}" aria-label="Move ${esc(t.title)} to ${moveLabel(from).toLowerCase()}">${moveLabel(from)} ${ic('right')}</button>`:'';return `<div class="todo ${t.done?'done':''}"><input type="checkbox" class="check" data-act="toggleTodo" data-id="${t.id}" ${t.done?'checked':''} aria-label="Done"><button class="tt" data-act="edit" data-col="todos" data-id="${t.id}">${esc(t.title)}</button><span class="meta">${t.project?pill(nameOf('projects',t.project),'plain'):''}${t.due?pill((od?'Overdue ':'Due ')+fShort(t.due),od?'rust':''):''}${mv}</span></div>`};
+let UNDO=null;
+function snapUndo(label){UNDO={todos:clone(db.todos),days:clone(db.days)};return label}
+function moveTodoTo(t,to){t.planned=to;let due=false;if(t.due&&t.due<to){t.due=to;due=true}return due}
+/* a non-negotiable or quick to-do line goes into the next day's first free line (non-negotiables overflow into quick to-dos, then the to-do list) */
+function moveDayLine(d,k,i,to){const x=D(d),q=x[k][i],t=(q&&q.t||'').trim();if(!t||q.done)return '';const y=D(to);
+ const put=kk=>{const j=y[kk].findIndex(z=>!(z.t||'').trim());if(j<0)return false;y[kk][j]={t,done:false};return true};
+ let where=k==='nonneg'&&put('nonneg')?'non-negotiables':put('quick')?'quick to-dos':(db.todos.push({id:uid(),title:t,priority:k==='nonneg'?'Non-negotiable':'Normal',planned:to}),'to-dos');
+ x[k][i]={t:'',done:false};return where}
+function moveAllFrom(from){const to=moveTarget(from);snapUndo();let n=0,due=0;
+ db.todos.filter(t=>isOn(t,from)).forEach(t=>{n++;if(moveTodoTo(t,to))due++});
+ if(db.days[from]){const x=D(from);['nonneg','quick'].forEach(k=>x[k].forEach((q,i)=>{if(moveDayLine(from,k,i,to))n++}))}
+ return {n,due,to}}
 
 /* ---------- HOME ---------- */
 function homeLists(){const t=today(),open=db.todos.filter(x=>!x.done);
@@ -1151,7 +1178,7 @@ function vHome(){
    </section>
    <section class="card">
     <h2>Planned to-dos</h2><p>Your <em>planned</em> to-dos show everything you have planned for today through your daily planning, plus anything due or overdue today.</p>
-    <div class="row" style="margin-top:14px"><button class="btn" data-act="add" data-col="todos" data-preset='${esc(JSON.stringify({planned:t,priority:'Normal'}))}'>Create new</button></div>
+    <div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap"><button class="btn" data-act="add" data-col="todos" data-preset='${esc(JSON.stringify({planned:t,priority:'Normal'}))}'>Create new</button>${openPlanned?`<button class="btn ghost" data-act="moveAll" data-from="${t}">${ic('right')}Move unfinished to tomorrow</button>`:''}</div>
     <div class="rule"></div>
     <div class="tabs">${[['planned','Planned'],['soon','Due soon'],['none','No due date']].map(([v,l])=>`<button class="${S.homeTab===v?'on':''}" data-act="homeTab" data-v="${v}">${ic('proj')}${l} <span class="muted small num">${L[v].filter(x=>!x.done).length}</span></button>`).join('')}</div>
     <div style="margin-top:8px">${groups.length?groups.map(([p,items])=>`<div class="group"><button class="ghead ${S.shut[p]?'shut':''}" data-act="shut" data-v="${p}">${ic('caret','caret')}${pill(p,TONE[p])}<span class="count num">${items.length}</span></button>${S.shut[p]?'':items.map(todoRow).join('')}</div>`).join(''):`<div class="empty">Nothing here. Enjoy the space, or create a to-do.</div>`}</div>
@@ -1211,6 +1238,8 @@ function vPlanning(){const s=S.sub.planning;
  return head('Planning','Year, then month, then week, then today. Each layer feeds the next.')+tabs('planning',[['day','Day plan','day'],['week','Week plan','week'],['month','Month plan','month'],['year','Year plan','year']])+({day:vDay,week:vWeek,month:vMonth,year:vYear}[s])()}
 const DAILY_RITUAL=['Check today\'s schedule','Pick three non-negotiables','Plan meals and movement','Evening: tick off, log mood','Evening: glance at tomorrow'];
 const WEEKLY_RITUAL=['Review last week and tick off wins','Brain-dump everything on your mind','Choose three to five priorities','Give each priority a day','Plan workouts and meals','Check budget and invoices','Look ahead at birthdays and events'];
+const lineMove=(d,k,i,q)=>(q.t||'').trim()&&!q.done?`<button class="movebtn line" data-act="dayMove" data-d="${d}" data-k="${k}" data-i="${i}" title="Move to ${fShort(moveTarget(d))}" aria-label="Move to ${moveLabel(d).toLowerCase()}">${ic('right')}</button>`:'';
+const unfinishedOn=d=>db.todos.filter(t=>isOn(t,d)&&(t.planned===d||t.due===d||d===today())).length+(db.days[d]?['nonneg','quick'].reduce((n,k)=>n+(db.days[d][k]||[]).filter(q=>(q.t||'').trim()&&!q.done).length,0):0);
 function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
  const tasks=db.todos.filter(t=>t.planned===d||t.due===d);
  const hours=[];for(let h=5;h<=22;h++){hours.push(pad(h)+':00');if(h<22)hours.push(pad(h)+':30')}
@@ -1226,13 +1255,13 @@ function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
    ${hinduLine(d)}
    ${(()=>{const xs=evBand;return xs.length?`<div><span class="band">From your calendar</span><div class="stack" style="gap:4px;margin-top:6px">${xs.map(e=>`<div class="small"><b class="num">${e.time?hLabel(e.time):'All day'}</b> · ${esc(e.title)}</div>`).join('')}</div></div>`:''})()}
    <div><span class="band">Schedule</span><div class="lines" style="margin-top:6px">${hours.map(h=>`<div class="ln${h.endsWith(':30')?' half':''}"${rowStyle((x.cat||{})[h]||coverCat[h])}><span class="h">${hLabel(h)}</span><input class="hand" id="s${h}" data-bind="${P}.schedule.${h}" value="${esc(x.schedule[h]||'')}" placeholder="${cover[h]?'↳ '+esc(cover[h]):' '}" aria-label="${hLabel(h)}"><select class="dur" id="d${h}" data-bind="${P}.dur.${h}" aria-label="Length for ${hLabel(h)}">${DURS.map(([v,l])=>`<option value="${v}" ${String(dur[h]||'')===v?'selected':''}>${l}</option>`).join('')}</select><select class="dcat" id="c${h}" data-bind="${P}.cat.${h}" aria-label="Category for ${hLabel(h)}">${catOpts((x.cat||{})[h],'Category')}</select>${evRow(h)}</div>`).join('')}</div></div>
-   <div><span class="band">Quick to-dos</span><div class="lines" style="margin-top:6px">${x.quick.map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.quick.${i}.done" ${q.done?'checked':''} aria-label="Done" style="margin-bottom:7px"><input class="hand" id="q${i}" data-bind="${P}.quick.${i}.t" value="${esc(q.t)}" ${q.done?'style="text-decoration:line-through;opacity:.6"':''}></div>`).join('')}</div></div>
+   <div><span class="band">Quick to-dos</span><div class="lines" style="margin-top:6px">${x.quick.map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.quick.${i}.done" ${q.done?'checked':''} aria-label="Done" style="margin-bottom:7px"><input class="hand" id="q${i}" data-bind="${P}.quick.${i}.t" value="${esc(q.t)}" ${q.done?'style="text-decoration:line-through;opacity:.6"':''}>${lineMove(d,'quick',i,q)}</div>`).join('')}</div></div>
   </div>
   <div class="pg">
    <div><span class="band">Today I'm grateful for</span><input class="hand" id="grat" data-bind="${P}.grateful" value="${esc(x.grateful||'')}" style="border-bottom:1px solid var(--line)"></div>
-   <div class="box3"><span class="band">3 non-negotiable things I'll get done today</span><div class="lines" style="margin-top:6px">${x.nonneg.slice(0,3).map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.nonneg.${i}.done" ${q.done?'checked':''} style="margin-bottom:7px" aria-label="Done"><input class="hand" id="nn${i}" data-bind="${P}.nonneg.${i}.t" value="${esc(q.t)}" placeholder="${i+1}."></div>`).join('')}</div></div>
-   <div><div class="cardhead"><span class="band">Tasks</span><span class="muted small">From your to-do list</span></div>
-    <div style="margin-top:4px">${tasks.map(todoRow).join('')||'<p class="muted small" style="padding:8px 0">No tasks planned for this day.</p>'}</div>
+   <div class="box3"><span class="band">3 non-negotiable things I'll get done today</span><div class="lines" style="margin-top:6px">${x.nonneg.slice(0,3).map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.nonneg.${i}.done" ${q.done?'checked':''} style="margin-bottom:7px" aria-label="Done"><input class="hand" id="nn${i}" data-bind="${P}.nonneg.${i}.t" value="${esc(q.t)}" placeholder="${i+1}.">${lineMove(d,'nonneg',i,q)}</div>`).join('')}</div></div>
+   <div><div class="cardhead"><span class="band">Tasks</span><span class="muted small">From your to-do list</span></div>${unfinishedOn(d)?`<button class="btn sm movall" data-act="moveAll" data-from="${d}">${ic('right')}Move everything unfinished to ${moveLabel(d).toLowerCase()}</button>`:''}
+    <div style="margin-top:4px">${tasks.map(t=>todoRow(t,d)).join('')||'<p class="muted small" style="padding:8px 0">No tasks planned for this day.</p>'}</div>
     <div class="addline"><input id="addDayTodo" data-add="dayTodo" placeholder="Add a task for this day and press Enter"></div></div>
    <div><span class="band">Projects in progress</span><div style="margin-top:6px">${db.projects.filter(p=>p.status==='In progress').map(p=>{const pr=projProgress(p.id);return `<div class="todo"><button class="tt" data-act="openProject" data-id="${p.id}">${esc(p.name)}</button><span class="muted small num">${pr.done}/${pr.total}</span></div>`}).join('')||'<p class="muted small">None right now.</p>'}</div></div>
    <div class="trackers">
@@ -1504,7 +1533,7 @@ function render(){const a=document.activeElement,aid=a&&a.id,pos=a&&a.selectionS
  if(aid){const e=document.getElementById(aid);if(e){e.focus();try{if(pos!=null)e.setSelectionRange(pos,pos)}catch(_){}}}}
 async function hydrate(){for(const el of document.querySelectorAll('[data-file]')){const u=await fileURL(el.dataset.file);if(u)el.src=u}}
 function applyTheme(){const t=db.settings.theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;else if(document.documentElement.dataset.theme&&document.documentElement.dataset.setBy==='app')delete document.documentElement.dataset.theme;document.documentElement.dataset.setBy=(t==='system')?'':'app'}
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800)}
+function toast(m,undo){const t=document.getElementById('toast');if(undo){t.innerHTML=`${esc(m)}<button class="tundo" data-act="undo">Undo</button>`;t.classList.add('act')}else{t.textContent=m;t.classList.remove('act');UNDO=null}t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>{t.classList.remove('show','act')},undo?6000:1800)}
 
 /* ---------- modal form ---------- */
 function fieldHtml(f,v){const id='f_'+f.k,cls=`${f.full||f.t==='textarea'?'full':''}`;const lab=`${esc(f.l)}${f.req?' *':''}`;
@@ -1579,6 +1608,10 @@ const A={
  calWhat:e=>{db.settings.gcalWhat={...calWhat(),[e.dataset.k]:e.checked};save();calSoon()},
  calShow:e=>{const s=new Set(showCals());if(e.checked)s.add(e.dataset.id);else s.delete(e.dataset.id);db.settings.gcalShow=[...s];C.ext={};C.extAt={};save();render()},
  clearFile:e=>{MODAL.clear[e.dataset.k]=1;e.parentElement.textContent='Will be removed when you save'},
+ moveTodo:e=>{const t=byId('todos',e.dataset.id);if(!t)return;const to=moveTarget(e.dataset.from||today());snapUndo();const due=moveTodoTo(t,to);save();render();toast(`Moved to ${dayWord(to)}${due?', due date too':''}`,true)},
+ dayMove:e=>{const d=e.dataset.d,to=moveTarget(d);snapUndo();const w=moveDayLine(d,e.dataset.k,+e.dataset.i,to);if(!w)return;save();render();toast(`Moved to ${dayWord(to)}'s ${w}`,true)},
+ moveAll:e=>{const r=moveAllFrom(e.dataset.from||today());if(!r.n){toast('Nothing left to move');return}save();render();toast(`Moved ${r.n} to ${dayWord(r.to)}${r.due?` (${r.due} due date${r.due===1?'':'s'} too)`:''}`,true)},
+ undo:()=>{if(!UNDO)return;db.todos=UNDO.todos;db.days=UNDO.days;UNDO=null;save();render();toast('Undone')},
  toggleTodo:e=>{const t=byId('todos',e.dataset.id);t.done=!t.done;t.doneOn=t.done?today():'';save();render()},
  toggle:e=>{const x=byId(e.dataset.col,e.dataset.id);x[e.dataset.k]=!x[e.dataset.k];save();render()},
  habit:e=>{const d=e.dataset.d,h=e.dataset.h;const l=db.habitLog[d]||(db.habitLog[d]=[]);const i=l.indexOf(h);if(i>=0)l.splice(i,1);else l.push(h);save();render()},
