@@ -322,8 +322,7 @@ tbody tr.nohover:hover td{background:none}
 .movebtn{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--paper);color:var(--muted);font:500 .76rem var(--sans);padding:3px 8px 3px 10px;border-radius:99px;cursor:pointer;white-space:nowrap}
 .movebtn:hover{color:var(--sage-deep);border-color:var(--sage)}
 .movebtn svg{width:13px;height:13px}
-.movebtn.line{border:0;background:none;padding:2px 4px;opacity:.55;flex:none;margin-bottom:5px}
-.movebtn.line:hover{opacity:1}
+.movebtn.line{flex:none;margin-bottom:6px;align-self:end}
 .ln.nohour:has(.movebtn){grid-template-columns:24px 1fr auto}
 .todo{flex-wrap:wrap;row-gap:4px}.todo .tt{flex:1 1 180px}
 .movall{margin:8px 0 4px;gap:6px}.movall svg{width:14px;height:14px}
@@ -1238,7 +1237,7 @@ function vPlanning(){const s=S.sub.planning;
  return head('Planning','Year, then month, then week, then today. Each layer feeds the next.')+tabs('planning',[['day','Day plan','day'],['week','Week plan','week'],['month','Month plan','month'],['year','Year plan','year']])+({day:vDay,week:vWeek,month:vMonth,year:vYear}[s])()}
 const DAILY_RITUAL=['Check today\'s schedule','Pick three non-negotiables','Plan meals and movement','Evening: tick off, log mood','Evening: glance at tomorrow'];
 const WEEKLY_RITUAL=['Review last week and tick off wins','Brain-dump everything on your mind','Choose three to five priorities','Give each priority a day','Plan workouts and meals','Check budget and invoices','Look ahead at birthdays and events'];
-const lineMove=(d,k,i,q)=>(q.t||'').trim()&&!q.done?`<button class="movebtn line" data-act="dayMove" data-d="${d}" data-k="${k}" data-i="${i}" title="Move to ${fShort(moveTarget(d))}" aria-label="Move to ${moveLabel(d).toLowerCase()}">${ic('right')}</button>`:'';
+const lineMove=(d,k,i,q)=>(q.t||'').trim()&&!q.done?`<button class="movebtn line" data-act="dayMove" data-d="${d}" data-k="${k}" data-i="${i}" title="Move to ${fShort(moveTarget(d))}" aria-label="Move to ${moveLabel(d).toLowerCase()}">${moveLabel(d)} ${ic('right')}</button>`:'';
 const unfinishedOn=d=>db.todos.filter(t=>isOn(t,d)&&(t.planned===d||t.due===d||d===today())).length+(db.days[d]?['nonneg','quick'].reduce((n,k)=>n+(db.days[d][k]||[]).filter(q=>(q.t||'').trim()&&!q.done).length,0):0);
 function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
  const tasks=db.todos.filter(t=>t.planned===d||t.due===d);
