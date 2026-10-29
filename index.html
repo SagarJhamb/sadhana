@@ -325,7 +325,16 @@ tbody tr.nohover:hover td{background:none}
 .movebtn.line{flex:none;margin-bottom:6px;align-self:end}
 .ln.nohour:has(.movebtn){grid-template-columns:24px 1fr auto}
 .todo{flex-wrap:wrap;row-gap:4px}.todo .tt{flex:1 1 180px}
-.movall{margin:8px 0 4px;gap:6px}.movall svg{width:14px;height:14px}
+.movall{margin:8px 0 4px;gap:6px}
+.carry{border-color:var(--sage-soft);background:linear-gradient(var(--sage-soft),var(--sage-soft)) top/100% 4px no-repeat,var(--paper)}
+.corow{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;padding:9px 0;border-bottom:1px solid var(--line)}
+.corow:last-child{border-bottom:0}
+.cot{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;flex:1 1 220px}
+.cot .ct{font-family:var(--serif);font-size:1.05rem;overflow-wrap:anywhere}
+.coacts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.cot .meta{display:flex;gap:6px;flex-wrap:wrap}
+.movebtn.quiet{border-color:transparent;background:none}
+.copick{max-width:160px;padding:4px 8px;font-size:.85rem}.movall svg{width:14px;height:14px}
 .exnote{font-size:.84rem;color:var(--clay);background:var(--clay-soft);border-radius:10px;padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 
 @media (max-width:1100px){.grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -713,7 +722,7 @@ const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('calendar.events.readonl
 const C={calId:null,list:null,busy:false,again:false,timer:null,last:0,ext:{},extAt:{},loading:{},error:null,pushed:0};
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London'}catch(e){return 'Europe/London'}})();
 const calDefaults=()=>({hearings:true,events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,tasks:true,nonneg:true,hindu:true});
-const calAlerts=()=>({hearing:'1440,60',tasks:'off',timed:'10',bday:'day',allday:'eve',...(db.settings.gcalAlerts||{})});
+const calAlerts=()=>({evening:'off',hearing:'1440,60',tasks:'off',timed:'10',bday:'day',allday:'eve',...(db.settings.gcalAlerts||{})});
 const calWhat=()=>({...calDefaults(),...(db.settings.gcalWhat||{})});
 const hexId=s=>'sd'+Array.from(new TextEncoder().encode(s)).map(b=>b.toString(16).padStart(2,'0')).join('');
 const strHash=s=>{let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)};
@@ -757,10 +766,13 @@ function wanted(){const w=calWhat(),out={};const tz=TZ;const cm=catMap();
  if(w.nonneg){const from=addDays(today(),-7);const taken=new Set(Object.values(out).filter(b=>b.task).map(b=>b.start.date+'|'+b.summary.replace(/^\S+ /,'').replace(/ \(.*\)$/,'').trim().toLowerCase()));
   for(const d in db.days||{}){if(d<from)continue;(db.days[d].nonneg||[]).forEach((q,i)=>{const t=(q&&q.t||'').trim();if(!t||q.done||taken.has(d+'|'+t.toLowerCase()))return;
    out['nn:'+d+':'+i]=allDay(d,null,`⭐ ${t}`,{description:'One of your three non-negotiables for today. Tick it off in Sadhana and it will disappear from here.',task:1})})}}
+ {const ev=calAlerts().evening;if(ev&&ev!=='off'&&/^\d{2}:\d{2}$/.test(ev)){const td=today(),left=leftToday();
+  if(left.length)out['nu:'+td]={summary:`🌙 ${left.length} thing${left.length===1?'':'s'} left for today`,start:{dateTime:`${td}T${ev}:00`,timeZone:tz},end:{dateTime:`${td}T${ev.slice(0,3)}15:00`,timeZone:tz},transparency:'transparent',description:left.map(x=>'• '+x).join('\n')+'\n\nOpen Sadhana to tick them off or move them to tomorrow.',nudge:1}}}
  const al=calAlerts();
  const where={};
  for(const k in out){const b=out[k];where[k]=catCals()?validCat(b._cat):'';delete b._cat;let mins=[];
-  if(b.task){delete b.task;mins=al.tasks==='morn'?[900]:al.tasks==='eve'?[360]:[]}
+  if(b.nudge){delete b.nudge;mins=[0]}
+  else if(b.task){delete b.task;mins=al.tasks==='morn'?[900]:al.tasks==='eve'?[360]:[]}
   else if(b.hearing){delete b.hearing;mins=String(al.hearing).split(',').map(Number).filter(Boolean)}
   else if(b.start.dateTime){if(+al.timed)mins=[+al.timed]}
   else if(k.startsWith('bd:')){mins=al.bday==='week'?[10980,900]:al.bday==='day'?[900]:[]}
@@ -845,6 +857,7 @@ function calCard(){const w=calWhat(),on=!!db.settings.gcal;
    <div class="rule"></div><p class="small muted">Alerts on your iPhone and Mac (through Apple Calendar):</p>
    <div class="stack" style="gap:10px">
     ${alertSel('hearing','Hearings',[['0','No alert'],['60','1 hour before'],['120','2 hours before'],['1440','The day before'],['1440,60','The day before and 1 hour before']])}
+    ${alertSel('evening','Evening check-in: what is left for today',[['off','Off'],['19:00','7pm'],['20:00','8pm'],['21:00','9pm']])}
     ${alertSel('tasks','To-dos and non-negotiables',[['off','No alert'],['eve','Day before at 6pm'],['morn','Day before at 9am']])}
     ${alertSel('timed','Schedule and timed events',[['0','No alert'],['5','5 minutes before'],['10','10 minutes before'],['15','15 minutes before'],['30','30 minutes before'],['60','1 hour before']])}
     ${alertSel('bday','Birthdays',[['off','No alert'],['day','Day before at 9am'],['week','A week before and the day before']])}
@@ -1127,11 +1140,33 @@ const dayWord=d=>d===today()?'today':d===addDays(today(),1)?'tomorrow':fShort(d)
 const moveLabel=from=>from<today()?'Today':from===today()?'Tomorrow':'Next day';
 const isOn=(t,from)=>!t.done&&((t.planned&&t.planned<=from)||(t.due&&t.due<=from));
 const todoRow=(t,from)=>{from=typeof from==='string'?from:today();const od=t.due&&t.due<today()&&!t.done;const mv=isOn(t,from)?`<button class="movebtn" data-act="moveTodo" data-id="${t.id}" data-from="${from}" title="Move to ${fShort(moveTarget(from))}" aria-label="Move ${esc(t.title)} to ${moveLabel(from).toLowerCase()}">${moveLabel(from)} ${ic('right')}</button>`:'';return `<div class="todo ${t.done?'done':''}"><input type="checkbox" class="check" data-act="toggleTodo" data-id="${t.id}" ${t.done?'checked':''} aria-label="Done"><button class="tt" data-act="edit" data-col="todos" data-id="${t.id}">${esc(t.title)}</button><span class="meta">${t.project?pill(nameOf('projects',t.project),'plain'):''}${t.due?pill((od?'Overdue ':'Due ')+fShort(t.due),od?'rust':''):''}${mv}</span></div>`};
+/* carried over: unfinished things from the last 7 days that she hasn't moved, done or let go */
+const CO_DAYS=7;
+const coWhen=x=>x.planned||x.due||'';
+const isCarried=x=>{if(x.done||!x.title)return false;const w=coWhen(x),t=today();return !!w&&w<t&&w>=addDays(t,-CO_DAYS)};
+function carried(){const t=today(),from=addDays(t,-CO_DAYS),out=[];
+ db.todos.filter(isCarried).forEach(x=>out.push({key:'td|'+x.id,title:x.title,from:coWhen(x),kind:x.priority==='Non-negotiable'?'Non-negotiable':'To-do',due:x.due}));
+ Object.keys(db.days||{}).filter(d=>d>=from&&d<t).sort().forEach(d=>['nonneg','quick'].forEach(k=>(db.days[d][k]||[]).forEach((q,i)=>{const tt=(q&&q.t||'').trim();if(tt&&!q.done&&!q.gone)out.push({key:`ln|${d}|${k}|${i}`,title:tt,from:d,kind:k==='nonneg'?'Non-negotiable':'Quick to-do'})})));
+ return out.sort((a,b)=>a.from<b.from?-1:a.from>b.from?1:0)}
+function coMove(key,to){const [kind,a,b,c]=key.split('|');
+ if(kind==='td'){const x=byId('todos',a);if(!x)return '';if(to===today()){x.planned=to;return 'to-dos'}moveTodoTo(x,to);return 'to-dos'}
+ return moveDayLine(a,b,+c,to)}
+function coDrop(key){const [kind,a,b,c]=key.split('|');
+ if(kind==='td'){const x=byId('todos',a);if(x){x.done=true;x.doneOn=today();x.dropped=true}}
+ else{const q=((db.days[a]||{})[b]||[])[+c];if(q)q.gone=true}}
+const dayAgo=d=>d===addDays(today(),-1)?'Yesterday':fShort(d);
+const coWhere=w=>w&&w!=='to-dos'?"'s "+w:'';
+function carryCard(){const xs=carried();if(!xs.length)return '';const one=xs.length===1;
+ return `<section class="card carry"><div class="cardhead" style="align-items:flex-start"><div><h3>Carried over</h3><p class="muted small" style="margin-top:4px">${one?'One thing':xs.length+' things'} from the last few days ${one?"isn't":"aren't"} finished. Bring ${one?'it':'them'} into today, pick a day, or let ${one?'it':'them'} go.</p></div>${one?'':`<button class="btn primary sm" data-act="coAll">All to today</button>`}</div>
+  <div style="margin-top:8px">${xs.map(x=>{const od=x.due&&x.due<today();return `<div class="corow"><div class="cot"><span class="ct">${esc(x.title)}</span><span class="meta">${pill(dayAgo(x.from),'plain')}${x.kind!=='To-do'?pill(x.kind,x.kind==='Non-negotiable'?'rust':''):''}${od?pill('Overdue '+fShort(x.due),'rust'):''}</span></div><div class="coacts"><button class="movebtn" data-act="coToday" data-key="${esc(x.key)}">Today</button><button class="movebtn" data-act="coPick" data-key="${esc(x.key)}">Pick a day</button><button class="movebtn quiet" data-act="coDrop" data-key="${esc(x.key)}">Let go</button></div></div>`}).join('')}</div></section>`}
+/* what's still open today, for the evening check-in */
+function leftToday(){const t=today(),out=db.todos.filter(x=>isOn(x,t)&&!isCarried(x)).map(x=>x.title);
+ const x=db.days[t];if(x)['nonneg','quick'].forEach(k=>(x[k]||[]).forEach(q=>{const tt=(q&&q.t||'').trim();if(tt&&!q.done&&!q.gone)out.push(tt)}));return out}
 let UNDO=null;
 function snapUndo(label){UNDO={todos:clone(db.todos),days:clone(db.days)};return label}
 function moveTodoTo(t,to){t.planned=to;let due=false;if(t.due&&t.due<to){t.due=to;due=true}return due}
 /* a non-negotiable or quick to-do line goes into the next day's first free line (non-negotiables overflow into quick to-dos, then the to-do list) */
-function moveDayLine(d,k,i,to){const x=D(d),q=x[k][i],t=(q&&q.t||'').trim();if(!t||q.done)return '';const y=D(to);
+function moveDayLine(d,k,i,to){const x=D(d),q=x[k][i],t=(q&&q.t||'').trim();if(!t||q.done||q.gone)return '';const y=D(to);
  const put=kk=>{const j=y[kk].findIndex(z=>!(z.t||'').trim());if(j<0)return false;y[kk][j]={t,done:false};return true};
  let where=k==='nonneg'&&put('nonneg')?'non-negotiables':put('quick')?'quick to-dos':(db.todos.push({id:uid(),title:t,priority:k==='nonneg'?'Non-negotiable':'Normal',planned:to}),'to-dos');
  x[k][i]={t:'',done:false};return where}
@@ -1142,7 +1177,7 @@ function moveAllFrom(from){const to=moveTarget(from);snapUndo();let n=0,due=0;
 
 /* ---------- HOME ---------- */
 function homeLists(){const t=today(),open=db.todos.filter(x=>!x.done);
- return {planned:db.todos.filter(x=>(x.done&&x.doneOn===t&&(x.planned||x.due))||(!x.done&&((x.planned&&x.planned<=t)||(x.due&&x.due<=t)))),
+ return {planned:db.todos.filter(x=>(x.done&&!x.dropped&&x.doneOn===t&&(x.planned||x.due))||(!x.done&&!isCarried(x)&&((x.planned&&x.planned<=t)||(x.due&&x.due<=t)))),
   soon:open.filter(x=>x.due&&x.due>t&&x.due<=addDays(t,7)),none:open.filter(x=>!x.due&&!x.planned)}}
 function vHome(){
  const t=today(),day=D(t),wk=W(monday(t)),mo=M(ymOf(t)),yr=Y(t.slice(0,4));
@@ -1161,7 +1196,7 @@ function vHome(){
  const it=(txt,c='')=>`<div class="it"><i class="${c}"></i><span>${txt}</span></div>`;
  const groups=PRI.map(p=>[p,list.filter(x=>(x.priority||'Normal')===p)]).filter(g=>g[1].length);
  const ovc=(title,where,ok,okText,todoText,go)=>`<button class="ovc" data-act="goPlan" data-v="${go}"><span class="t">${title}</span><span class="w">${ic('pin')}${where}</span>${ok?pill(okText,'green'):pill(todoText,'clay')}</button>`;
- return `${exBanner()}${timerCard()}
+ return `${exBanner()}${carryCard()}${timerCard()}
  <div class="grid2 split" style="align-items:start">
   <div class="stack">
    <section class="card">
@@ -1237,8 +1272,8 @@ function vPlanning(){const s=S.sub.planning;
  return head('Planning','Year, then month, then week, then today. Each layer feeds the next.')+tabs('planning',[['day','Day plan','day'],['week','Week plan','week'],['month','Month plan','month'],['year','Year plan','year']])+({day:vDay,week:vWeek,month:vMonth,year:vYear}[s])()}
 const DAILY_RITUAL=['Check today\'s schedule','Pick three non-negotiables','Plan meals and movement','Evening: tick off, log mood','Evening: glance at tomorrow'];
 const WEEKLY_RITUAL=['Review last week and tick off wins','Brain-dump everything on your mind','Choose three to five priorities','Give each priority a day','Plan workouts and meals','Check budget and invoices','Look ahead at birthdays and events'];
-const lineMove=(d,k,i,q)=>(q.t||'').trim()&&!q.done?`<button class="movebtn line" data-act="dayMove" data-d="${d}" data-k="${k}" data-i="${i}" title="Move to ${fShort(moveTarget(d))}" aria-label="Move to ${moveLabel(d).toLowerCase()}">${moveLabel(d)} ${ic('right')}</button>`:'';
-const unfinishedOn=d=>db.todos.filter(t=>isOn(t,d)&&(t.planned===d||t.due===d||d===today())).length+(db.days[d]?['nonneg','quick'].reduce((n,k)=>n+(db.days[d][k]||[]).filter(q=>(q.t||'').trim()&&!q.done).length,0):0);
+const lineMove=(d,k,i,q)=>(q.t||'').trim()&&!q.done&&!q.gone?`<button class="movebtn line" data-act="dayMove" data-d="${d}" data-k="${k}" data-i="${i}" title="Move to ${fShort(moveTarget(d))}" aria-label="Move to ${moveLabel(d).toLowerCase()}">${moveLabel(d)} ${ic('right')}</button>`:'';
+const unfinishedOn=d=>db.todos.filter(t=>isOn(t,d)&&(t.planned===d||t.due===d||d===today())).length+(db.days[d]?['nonneg','quick'].reduce((n,k)=>n+(db.days[d][k]||[]).filter(q=>(q.t||'').trim()&&!q.done&&!q.gone).length,0):0);
 function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
  const tasks=db.todos.filter(t=>t.planned===d||t.due===d);
  const hours=[];for(let h=5;h<=22;h++){hours.push(pad(h)+':00');if(h<22)hours.push(pad(h)+':30')}
@@ -1247,7 +1282,7 @@ function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
  const xs=extOn(d),evAt={},evCont={},evBand=[];xs.forEach(e=>{if(!e.time){evBand.push(e);return}const st=mm(e.time),k=hk(st-st%30);if(!hours.includes(k)){evBand.push(e);return}(evAt[k]=evAt[k]||[]).push(e);const en=e.end?mm(e.end):st;for(let t=st-st%30+30;t<en;t+=30){const c=hk(t);if(hours.includes(c))(evCont[c]=evCont[c]||[]).push(e.title)}});
  const evRow=h=>(evAt[h]||evCont[h])?`<div class="evx">${(evAt[h]||[]).map(e=>`<span class="ev">${e.time!==h?hLabel(e.time)+' · ':''}${esc(e.title)}</span>`).join('')}${(evCont[h]||[]).map(t=>`<span class="ev cont">↳ ${esc(t)}</span>`).join('')}</div>`:'';
  const wid=x.workout||'';const fp=(db.fitPlan[monday(d)]||{})[(parse(d).getDay()+6)%7]||{};const planned=fp.w?nameOf('workouts',fp.w):'';
- return `<div class="cardhead">${navBar('navDay',fLong(d)+' '+d.slice(0,4))}<span class="muted small">Daily framework: morning plan, evening review</span></div>
+ return `${d===today()?carryCard():''}<div class="cardhead">${navBar('navDay',fLong(d)+' '+d.slice(0,4))}<span class="muted small">Daily framework: morning plan, evening review</span></div>
  <div class="spread">
   <div class="pg">
    <div class="row" style="justify-content:space-between"><span class="band">Date · ${fFull(d)}</span></div>
@@ -1607,6 +1642,10 @@ const A={
  calWhat:e=>{db.settings.gcalWhat={...calWhat(),[e.dataset.k]:e.checked};save();calSoon()},
  calShow:e=>{const s=new Set(showCals());if(e.checked)s.add(e.dataset.id);else s.delete(e.dataset.id);db.settings.gcalShow=[...s];C.ext={};C.extAt={};save();render()},
  clearFile:e=>{MODAL.clear[e.dataset.k]=1;e.parentElement.textContent='Will be removed when you save'},
+ coToday:e=>{snapUndo();const w=coMove(e.dataset.key,today());save();render();toast(`Moved to today${coWhere(w)}`,true)},
+ coPick:e=>{if(e.nextElementSibling&&e.nextElementSibling.classList.contains('copick'))return;const i=document.createElement('input');i.type='date';i.className='field copick';i.min=today();i.value=addDays(today(),1);i.dataset.key=e.dataset.key;i.setAttribute('aria-label','Choose a day');e.after(i);e.hidden=true;i.focus();try{i.showPicker()}catch(x){}},
+ coDrop:e=>{snapUndo();coDrop(e.dataset.key);save();render();toast('Let go',true)},
+ coAll:()=>{snapUndo();const xs=carried();xs.forEach(x=>coMove(x.key,today()));save();render();toast(`Moved ${xs.length} to today`,true)},
  moveTodo:e=>{const t=byId('todos',e.dataset.id);if(!t)return;const to=moveTarget(e.dataset.from||today());snapUndo();const due=moveTodoTo(t,to);save();render();toast(`Moved to ${dayWord(to)}${due?', due date too':''}`,true)},
  dayMove:e=>{const d=e.dataset.d,to=moveTarget(d);snapUndo();const w=moveDayLine(d,e.dataset.k,+e.dataset.i,to);if(!w)return;save();render();toast(`Moved to ${dayWord(to)}'s ${w}`,true)},
  moveAll:e=>{const r=moveAllFrom(e.dataset.from||today());if(!r.n){toast('Nothing left to move');return}save();render();toast(`Moved ${r.n} to ${dayWord(r.to)}${r.due?` (${r.due} due date${r.due===1?'':'s'} too)`:''}`,true)},
@@ -1671,6 +1710,7 @@ document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&MODAL)closeModal();
  const t=ev.target;if(ev.key==='Enter'&&t.dataset&&t.dataset.add&&t.value.trim()){ADD[t.dataset.add](t.value.trim(),t);t.value='';save();render();}
  if((ev.key==='Enter'||ev.key===' ')&&t.getAttribute&&t.getAttribute('role')==='button'&&t.dataset.act){ev.preventDefault();A[t.dataset.act](t,ev)}});
+document.addEventListener('change',ev=>{const t=ev.target;if(!t.classList||!t.classList.contains('copick')||!t.value)return;if(t.value<today()){toast('Pick today or a later day');return}snapUndo();const w=coMove(t.dataset.key,t.value);save();render();toast(`Moved to ${dayWord(t.value)}${coWhere(w)}`,true)});
 document.addEventListener('input',ev=>{const t=ev.target;if(t.dataset.bind&&t.type!=='checkbox'&&t.tagName!=='SELECT'){setPath(t.dataset.bind,t.dataset.num?Number(t.value):t.value);save()}
  if(t.dataset.filter){S.f[t.dataset.filter]=t.value;render()}});
 document.addEventListener('change',ev=>{const t=ev.target;if(!t.dataset.bind)return;if(t.type==='checkbox'){setPath(t.dataset.bind,t.checked);save();render()}else if(t.tagName==='SELECT'){setPath(t.dataset.bind,t.value);save();if(t.dataset.bind==='settings.theme')applyTheme();render()}
