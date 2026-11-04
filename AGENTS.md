@@ -44,6 +44,7 @@ Sections are marked with `/* ---------- name ---------- */` comments. In order:
 | add a matter | `quickOpt(ref)` and `quickAdd(sel)`: a "+ Add a new matter…" option in any matter dropdown |
 | Hindu calendar | `HINDU` data (date to `[tithi, observances, flags]`; flags: 1 Ekadashi, 2 major festival, 4 nirjala) plus helpers |
 | shopping list | `db.shopping`, `db.usuals`, aisle guessing, `addShop`, `vShop` |
+| Apple-style calendar | `calItems(d)` gathers everything on a day (day plan items, events, hearings, birthdays, trips, seva, Ekadashi and festivals, to-dos, her own calendar events); `timeline(days)` draws the time grid for day and week; `monthGrid`, `miniMonth`, `agenda`, `weekStrip`; `openSlot`/`saveSlot` is the sheet for adding or editing a day plan item. Day plan items are still stored in `db.days[date].schedule` / `dur` / `cat` (15-minute start times allowed). |
 | seed | `seed()`: the default `db` shape and example data. `ensure()` fills missing keys from it on load. |
 | views | `vHome`, `vPlanning`, `vProjects`, `vGrowth`, `vHealth`, `vShop`, `vFinance`, `vOrg`, `vBar`, `vSat`, `vSettings` |
 | render | `NAV`, `NICON`, `VIEWS`; `render()` rebuilds the current view from state and keeps focus and cursor position |

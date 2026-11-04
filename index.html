@@ -397,6 +397,111 @@ body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-ri
 @media (max-width:900px){.syncpill{display:block;position:fixed;right:calc(12px + env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));z-index:40;font:500 12px var(--sans);color:var(--muted);background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:6px 12px;box-shadow:var(--shadow);cursor:pointer}
  .main{padding-bottom:calc(60px + env(safe-area-inset-bottom))}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* Apple-style calendar views */
+.planx{display:flex;flex-direction:column;gap:18px}
+.calbar{display:flex;flex-direction:column;gap:14px}
+.seg{display:flex;align-self:center;background:var(--sand);border-radius:10px;padding:3px;gap:2px;width:min(440px,100%)}
+.seg button{flex:1;border:0;background:none;padding:7px 10px;border-radius:8px;font:500 .9rem var(--sans);color:var(--ink);cursor:pointer}
+.seg button.on{background:var(--paper);box-shadow:0 1px 3px rgba(40,30,20,.14),0 0 0 .5px rgba(40,30,20,.06)}
+.calnav{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.caltitle{font-family:var(--sans);font-weight:700;font-size:2rem;letter-spacing:-.02em;line-height:1.1}
+.caltitle span{font-weight:400}
+.calplus{background:var(--sage-deep);color:var(--paper);border-radius:50%}
+.calplus:hover{background:var(--sage-deep);filter:brightness(1.08)}
+.wstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));margin:0 0 8px}
+.wstrip button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0;cursor:pointer;color:var(--ink);font:inherit}
+.wstrip span{font-size:.68rem;color:var(--muted);font-weight:600}
+.wstrip b{font:500 1.05rem var(--sans);width:34px;height:34px;display:grid;place-items:center;border-radius:50%;font-variant-numeric:tabular-nums}
+.wstrip .today b{color:var(--rust)}
+.wstrip .sel b{background:var(--ink);color:var(--paper)}
+.wstrip .sel.today b{background:var(--rust);color:#fff}
+.wstrip i{width:5px;height:5px;border-radius:50%}.wstrip i.on{background:var(--muted);opacity:.6}
+.tlcard{padding:14px 14px 0;overflow:hidden}
+.tlcap{margin:0 0 6px}
+.tl{--g:54px;display:flex;flex-direction:column}
+.tl.multi{--g:48px}
+.tlrow{display:grid;grid-template-columns:var(--g) repeat(var(--n),minmax(0,1fr))}
+.tlh{border-bottom:1px solid var(--line);padding-bottom:6px}
+.tlhd{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:var(--ink);padding:2px 0;font:inherit;min-width:0}
+.tlhd span{font-size:.7rem;color:var(--muted);font-weight:600}
+.tlhd b{font:500 1rem var(--sans);width:30px;height:30px;display:grid;place-items:center;border-radius:50%;font-variant-numeric:tabular-nums}
+.tlhd.today b{background:var(--rust);color:#fff}
+.tla{border-bottom:1px solid var(--line);padding:4px 0}
+.tla .tlg{font-size:.66rem;color:var(--muted);align-self:center;text-align:right;padding-right:8px}
+.tlac{display:flex;flex-direction:column;gap:2px;padding:0 2px;min-width:0}
+.tlad{border:0;text-align:left;font:600 .74rem/1.3 var(--sans);color:var(--ink);background:color-mix(in srgb,var(--c) 24%,var(--paper));border-radius:5px;padding:3px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-width:0}
+.tlad.todo{background:none;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 45%,var(--line));font-weight:500}
+.tls{overflow-y:auto;max-height:min(68vh,720px);position:relative;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding-top:8px}
+.tlbody{position:relative}
+.tlbody .tlg{position:relative}
+.tlbody .tlg span{position:absolute;right:8px;transform:translateY(-50%);font-size:.68rem;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tlbody .tlg .nowl{color:#fff;background:var(--rust);border-radius:6px;padding:1px 4px;font-weight:600;z-index:3;right:3px}
+.tlc{position:relative;border-left:1px solid var(--line);background-image:linear-gradient(var(--line) 1px,transparent 1px);background-size:100% var(--hh);cursor:cell;min-width:0}
+.tl.multi .tlc.today{background-color:color-mix(in srgb,var(--rust) 4%,transparent)}
+.tlnow{position:absolute;left:0;right:0;height:2px;margin-top:-1px;background:var(--rust);z-index:2;pointer-events:none}
+.tlnow::before{content:'';position:absolute;left:-5px;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--rust)}
+.tlb{position:absolute;border:0;text-align:left;padding:3px 6px 3px 9px;border-radius:6px;background:color-mix(in srgb,var(--c) 26%,var(--paper));box-shadow:inset 3px 0 0 var(--c);color:var(--ink);overflow:hidden;display:flex;flex-direction:column;gap:1px;font:inherit;cursor:pointer;z-index:1;min-width:0}
+.tlb b{font:600 .78rem/1.25 var(--sans);overflow:hidden;text-overflow:ellipsis}
+.tlb span{font-size:.7rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tlb.short{flex-direction:row;align-items:center;gap:6px;white-space:nowrap;padding-top:0;padding-bottom:0}
+.tlb.short b{white-space:nowrap}
+.tlb.ext{background:color-mix(in srgb,var(--c) 16%,var(--paper))}
+.tlb:hover,.tlad:hover{filter:brightness(.97)}
+.tl.multi .tlb{padding:2px 3px 2px 6px}.tl.multi .tlb span{display:none}.tl.multi .tlb b{font-size:.72rem}
+.dayx{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+.daypg{background:var(--paper);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+.focusl .fr{display:grid;grid-template-columns:78px minmax(0,1fr) 12px;gap:8px;align-items:center;padding:3px 0}
+.focusl .fr .btn{justify-content:flex-start;padding-left:0}
+.focusl .field{padding:6px 8px;font-size:.88rem}
+.mdot{width:10px;height:10px;border-radius:50%}
+.monthx{display:grid;grid-template-columns:minmax(0,2.3fr) minmax(260px,1fr);gap:18px;align-items:start}
+.mcard{padding:10px 10px 8px}
+.mdow{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));padding:2px 0 6px;border-bottom:1px solid var(--line)}
+.mdow span{font-size:.72rem;color:var(--muted);font-weight:600;text-align:right;padding-right:10px}
+.mcells{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.mc{border:0;border-bottom:1px solid var(--line);border-right:1px solid var(--line);background:none;min-height:108px;display:flex;flex-direction:column;align-items:stretch;gap:3px;padding:5px 4px;text-align:left;cursor:pointer;color:var(--ink);min-width:0;font:inherit}
+.mcells>:nth-child(7n){border-right:0}
+.mc.we{background:color-mix(in srgb,var(--sand) 35%,transparent)}
+.mc:hover:not(.blank){background:var(--hover)}
+.mc.blank{cursor:default}
+.mn{align-self:flex-end;font:500 .9rem var(--sans);width:28px;height:28px;display:grid;place-items:center;border-radius:50%;font-variant-numeric:tabular-nums;flex:none}
+.mc.today .mn{color:var(--rust);font-weight:700}
+.mc.sel .mn{background:var(--ink);color:var(--paper)}
+.mc.sel.today .mn{background:var(--rust);color:#fff}
+.mls{display:flex;flex-direction:column;gap:2px;min-width:0}
+.ml{font-size:.72rem;line-height:1.35;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;min-width:0}
+.ml i{flex:none;width:7px;height:7px;border-radius:50%;background:var(--c)}
+.ml.all{background:color-mix(in srgb,var(--c) 24%,var(--paper));border-radius:4px;padding:0 5px;display:block;font-weight:600;text-overflow:ellipsis}
+.ml.more{color:var(--muted);padding-left:2px}
+.mdots{display:none;justify-content:center;gap:3px;flex-wrap:wrap;min-height:6px}
+.mdots i{width:6px;height:6px;border-radius:50%;background:var(--c)}.mdots i.bar{width:16px;border-radius:3px}
+.agrow{display:flex;align-items:center;gap:12px;width:100%;border:0;background:none;text-align:left;padding:10px 2px;border-bottom:1px solid var(--line);cursor:pointer;color:var(--ink);font:inherit}
+.agrow:last-child{border-bottom:0}
+.agrow i{flex:none;width:4px;align-self:stretch;min-height:22px;border-radius:2px;background:var(--c)}
+.agrow .t{flex:1;min-width:0;font:500 1rem var(--sans);overflow-wrap:anywhere;display:flex;flex-direction:column}
+.agrow small{font-size:.76rem;color:var(--muted);font-weight:400}
+.agrow .w{font-size:.84rem;color:var(--muted);text-align:right;display:flex;flex-direction:column;font-variant-numeric:tabular-nums;white-space:nowrap}
+.years{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:22px 20px}
+.mini{border:0;background:none;text-align:left;display:flex;flex-direction:column;gap:6px;cursor:pointer;color:var(--ink);padding:6px;border-radius:10px;font:inherit;min-width:0}
+.mini:hover{background:var(--hover)}
+.mini .mt{font:700 1.1rem var(--sans);color:var(--rust)}
+.mini .mg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px 0;font-size:.66rem;text-align:center;font-variant-numeric:tabular-nums}
+.mini .mg span{line-height:1.7}
+.mini .mg .today{background:var(--rust);color:#fff;border-radius:50%;font-weight:700;width:1.8em;height:1.8em;line-height:1.8em;margin:0 auto}
+@media (max-width:900px){.dayx,.monthx{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:700px){
+ .caltitle{font-size:1.7rem}
+ .mcard{padding:6px 4px}
+ .mc{min-height:58px;align-items:center;padding:6px 0;border-right:0;gap:4px}
+ .mc.we{background:none}.mc.we:not(.today):not(.sel) .mn{color:var(--muted)}
+ .mn{align-self:center;font-size:1.1rem;width:36px;height:36px}
+ .mls{display:none}.mdots{display:flex}
+ .mdow span{text-align:center;padding:0}
+ .years{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 8px}
+ .mini{padding:2px}.mini .mg{font-size:.52rem;gap:1px 0}.mini .mt{font-size:.95rem}
+ .tl.multi{--g:36px}.tl.multi .tlbody .tlg span{font-size:.6rem;right:4px}
+ .tlcard{padding:10px 8px 0}
+}
 </style>
 </head>
 <body>
@@ -1268,36 +1373,111 @@ const feeOpen=f=>f.status==='Outstanding'||f.status==='Part paid';
 function tickClock(){const el=document.getElementById('clock');if(!el)return;const d=new Date();const h=d.getHours();el.innerHTML=`<div class="flip">${pad(h%12||12)}</div><div class="colon">:</div><div class="flip">${pad(d.getMinutes())}</div><div class="flip ampm">${h<12?'AM':'PM'}</div>`}
 
 /* ---------- PLANNING ---------- */
-function vPlanning(){const s=S.sub.planning;
- return head('Planning','Year, then month, then week, then today. Each layer feeds the next.')+tabs('planning',[['day','Day plan','day'],['week','Week plan','week'],['month','Month plan','month'],['year','Year plan','year']])+({day:vDay,week:vWeek,month:vMonth,year:vYear}[s])()}
-const DAILY_RITUAL=['Check today\'s schedule','Pick three non-negotiables','Plan meals and movement','Evening: tick off, log mood','Evening: glance at tomorrow'];
-const WEEKLY_RITUAL=['Review last week and tick off wins','Brain-dump everything on your mind','Choose three to five priorities','Give each priority a day','Plan workouts and meals','Check budget and invoices','Look ahead at birthdays and events'];
-const lineMove=(d,k,i,q)=>(q.t||'').trim()&&!q.done&&!q.gone?`<button class="movebtn line" data-act="dayMove" data-d="${d}" data-k="${k}" data-i="${i}" title="Move to ${fShort(moveTarget(d))}" aria-label="Move to ${moveLabel(d).toLowerCase()}">${moveLabel(d)} ${ic('right')}</button>`:'';
-const unfinishedOn=d=>db.todos.filter(t=>isOn(t,d)&&(t.planned===d||t.due===d||d===today())).length+(db.days[d]?['nonneg','quick'].reduce((n,k)=>n+(db.days[d][k]||[]).filter(q=>(q.t||'').trim()&&!q.done&&!q.gone).length,0):0);
+/* ---------- Apple-style calendar: day, week, month and year views ----------
+   Laid out like Apple Calendar so it feels familiar: a time grid with event blocks, an all-day row,
+   a red-toned "now" line, a week strip, a month grid with dots, and a year of mini months.
+   Day plan schedule items are stored exactly as before (db.days[date].schedule / dur / cat), so sync
+   and the Sadhana calendars are unchanged. Tap an empty time to add, tap a block to edit. */
+const HH=48; /* pixels per hour */
+const minOf=k=>(+k.slice(0,2))*60+(+k.slice(3,5));
+const keyOf=n=>pad(Math.floor(n/60))+':'+pad(n%60);
+const tmLabel=n=>{const h=Math.floor(n/60)%24,m=n%60;return `${h%12||12}${m?':'+pad(m):''}${h<12?'am':'pm'}`};
+const NOCOL='#8E8E93';
+function schedItems(d){const x=db.days[d];if(!x||!x.schedule)return [];const sc=x.schedule;
+ const ks=Object.keys(sc).filter(k=>/^\d{2}:\d{2}$/.test(k)&&(sc[k]||'').trim()).sort();
+ return ks.map((k,i)=>{const st=minOf(k),nx=i+1<ks.length?minOf(ks[i+1]):Infinity,len=+((x.dur||{})[k])||0;
+  const en=Math.min(len?st+len:Math.min(st+(k.endsWith(':30')?30:60),nx),24*60);const cat=validCat((x.cat||{})[k]);
+  return {t:sc[k].trim(),st,en:Math.max(en,st+15),col:catColor(cat)||'var(--sage)',act:`data-act="slotEdit" data-d="${d}" data-k="${k}"`}})}
+/* everything on a day, split into all-day items and timed items */
+function calItems(d,opt={}){const cm=catMap(),all=[],timed=[];const okT=v=>v&&/^\d{1,2}:\d{2}$/.test(v);const tk=v=>minOf(v.padStart(5,'0'));
+ timed.push(...schedItems(d));
+ for(const e of db.events||[]){if(e.date!==d||!e.title)continue;const it={t:e.title,col:catColor(validCat(e.category))||'var(--sage)',act:`data-act="edit" data-col="events" data-id="${e.id}"`,loc:e.location||''};
+  if(okT(e.time)){it.st=tk(e.time);it.en=Math.min(it.st+60,1440);timed.push(it)}else all.push(it)}
+ for(const h of db.hearings||[]){if(!h.date||h.status==='Vacated'||h.status==='Adjourned')continue;const on=h.date===d||(h.until&&h.until>h.date&&d>h.date&&d<=h.until);if(!on)continue;
+  const nm=((db.matters||[]).find(m=>m.id===h.matter)||{}).name||'Hearing';const it={t:`⚖️ ${nm}${h.type?' ('+h.type+')':''}`,col:catColor(validCat(cm.hearings))||'var(--sage-deep)',act:`data-act="edit" data-col="hearings" data-id="${h.id}"`,loc:h.court||''};
+  if(okT(h.time)&&h.date===d&&!(h.until&&h.until>h.date)){it.st=tk(h.time);it.en=Math.min(it.st+({'2 hours':120,'Half day':180,'Full day':360}[h.length]||60),1440);timed.push(it)}else all.push(it)}
+ for(const b of db.birthdays||[])if(b.date&&b.date.slice(5)===d.slice(5)&&b.name)all.push({t:`🎂 ${b.name}'s birthday`,col:catColor(validCat(cm.birthdays))||'var(--clay)',act:`data-act="edit" data-col="birthdays" data-id="${b.id}"`});
+ for(const t of db.trips||[])if(t.start&&t.destination&&t.start<=d&&d<=(t.end&&t.end>=t.start?t.end:t.start))all.push({t:`✈️ ${t.destination}`,col:catColor(validCat(cm.trips))||'var(--clay)',act:`data-act="edit" data-col="trips" data-id="${t.id}"`});
+ for(const s of db.seva||[])if(s.due===d&&!s.done&&s.title)all.push({t:`🪷 ${s.title}`,col:catColor(validCat(cm.seva))||'var(--clay)',act:`data-act="edit" data-col="seva" data-id="${s.id}"`});
+ if(db.settings.hinduShow!==false&&typeof hinduOn==='function'){const x=hinduOn(d);if(x&&(x.ek||x.major))all.push({t:`${x.ek?'🌙':'🪔'} ${(x.o||'Ekadashi').split('; ')[0]}`,col:catColor(validCat(cm.hindu))||'#D08C3C',act:`data-act="nav" data-v="sat"`})}
+ if(opt.todos)for(const t of db.todos||[]){if(t.done||!t.title)continue;if(t.planned===d||(!t.planned&&t.due===d))all.push({t:`☐ ${t.title}`,col:catColor(validCat(t.category))||'var(--muted)',act:`data-act="edit" data-col="todos" data-id="${t.id}"`,todo:1})}
+ for(const e of extOn(d)){const col=e.color||catColor(validCat(e.cat))||NOCOL;const it={t:e.title,col,ext:1,loc:e.loc||'',act:`data-act="extInfo" data-t="${esc(e.title)}" data-c="${esc(e.cal||'')}" data-w="${e.time?esc(hLabel(e.time)+(e.end&&e.end!=='24:00'?' to '+hLabel(e.end):'')):'All day'}"`};
+  if(e.time){it.st=minOf(e.time);it.en=e.end?Math.max(minOf(e.end==='24:00'?'24:00':e.end),it.st+15):it.st+60;if(e.end==='24:00')it.en=1440;timed.push(it)}else all.push(it)}
+ timed.sort((a,b)=>a.st-b.st||b.en-a.en);return {all,timed}}
+/* side-by-side columns for overlapping blocks, like Apple Calendar */
+function layoutCols(items){let cluster=[],end=-1;const flush=()=>{const cols=[];cluster.forEach(it=>{let c=cols.findIndex(e=>e<=it.st);if(c<0){c=cols.length;cols.push(0)}cols[c]=it.en;it.ci=c});cluster.forEach(it=>it.nc=cols.length);cluster=[]};
+ for(const it of items){if(cluster.length&&it.st>=end){flush();end=-1}cluster.push(it);end=Math.max(end,it.en)}if(cluster.length)flush();return items}
+const allChip=it=>`<button class="tlad ${it.ext?'ext':''} ${it.todo?'todo':''}" ${it.act} style="--c:${it.col}" title="${esc(it.t)}">${esc(it.t)}</button>`;
+function timeline(days,opt={}){const t=today(),now=new Date(),nm=now.getHours()*60+now.getMinutes();const multi=days.length>1;
+ const data=days.map(d=>calItems(d,{todos:multi}));const anyAll=data.some(x=>x.all.length);
+ const firsts=data.flatMap(x=>x.timed.map(i=>i.st));const start=days.includes(t)?Math.max(0,nm-90):(firsts.length?Math.max(0,Math.min(...firsts)-30):7*60);
+ const blocks=x=>layoutCols(x.timed).map(it=>{const h=(it.en-it.st)/60*HH,short=h<34;return `<button class="tlb ${it.ext?'ext':''} ${short?'short':''}" ${it.act} style="top:${it.st/60*HH}px;height:${Math.max(h,16)-2}px;left:calc(${it.ci/it.nc*100}% + 1px);width:calc(${100/it.nc}% - 3px);--c:${it.col}" title="${esc(it.t)}, ${tmLabel(it.st)} to ${tmLabel(it.en)}"><b>${esc(it.t)}</b>${short?` <span>${tmLabel(it.st)}</span>`:`<span>${tmLabel(it.st)}${it.loc?' · '+esc(it.loc):''}</span>`}</button>`}).join('');
+ return `<div class="tl ${multi?'multi':'single'}" style="--hh:${HH}px;--n:${days.length}">
+  ${multi?`<div class="tlrow tlh"><div class="tlg"></div>${days.map(d=>{const dt=parse(d);return `<button class="tlhd ${d===t?'today':''}" data-act="openDay" data-v="${d}"><span>${DOW[(dt.getDay()+6)%7].slice(0,3)}</span><b>${dt.getDate()}</b></button>`}).join('')}</div>`:''}
+  ${anyAll?`<div class="tlrow tla"><div class="tlg">all-day</div>${data.map(x=>`<div class="tlac">${x.all.map(allChip).join('')}</div>`).join('')}</div>`:''}
+  <div class="tls" id="tls" data-key="${S.view}:${S.sub.planning}:${days[0]}" data-start="${start}"><div class="tlrow tlbody" style="height:${24*HH}px">
+   <div class="tlg">${Array.from({length:23},(_,i)=>`<span style="top:${(i+1)*HH}px">${tmLabel((i+1)*60)}</span>`).join('')}${days.includes(t)?`<span class="nowl" style="top:${nm/60*HH}px">${pad(now.getHours())}:${pad(now.getMinutes())}</span>`:''}</div>
+   ${days.map((d,i)=>`<div class="tlc ${d===t?'today':''}" data-tl="${d}" aria-label="${fLong(d)}: tap a time to add to your day plan">${blocks(data[i])}${d===t?`<div class="tlnow" style="top:${nm/60*HH}px"></div>`:''}</div>`).join('')}
+  </div></div></div>`}
+/* the planner's own header: segmented Day / Week / Month / Year, a big title, and ‹ Today › */
+function calHead(title,act,extra=''){const s=S.sub.planning;
+ return `<div class="calbar"><div class="seg" role="tablist">${[['day','Day'],['week','Week'],['month','Month'],['year','Year']].map(([v,l])=>`<button role="tab" class="${s===v?'on':''}" aria-selected="${s===v}" data-act="sub" data-k="planning" data-v="${v}">${l}</button>`).join('')}</div>
+  <div class="calnav"><h1 class="caltitle">${title}</h1><div class="row" style="gap:6px">${extra}<button class="iconbtn" data-act="${act}" data-n="-1" aria-label="Previous">${ic('left')}</button><button class="btn sm" data-act="${act}" data-n="0">Today</button><button class="iconbtn" data-act="${act}" data-n="1" aria-label="Next">${ic('right')}</button></div></div></div>`}
+const addBtnCal=d=>`<button class="iconbtn calplus" data-act="slotNew" data-d="${d}" aria-label="Add to the day plan" title="Add to the day plan">${ic('plus')}</button>`;
+const hasItems=d=>{const x=calItems(d,{todos:true});return x.all.length+x.timed.length};
+function weekStrip(d){const w=monday(d),t=today();return `<div class="wstrip">${[0,1,2,3,4,5,6].map(i=>{const x=addDays(w,i),dt=parse(x);return `<button class="${x===d?'sel':''} ${x===t?'today':''}" data-act="pickDay" data-v="${x}" aria-label="${fLong(x)}"><span>${'MTWTFSS'[i]}</span><b>${dt.getDate()}</b><i class="${hasItems(x)?'on':''}"></i></button>`}).join('')}</div>`}
+function agenda(d){const x=calItems(d,{todos:true});const rows=[...x.all.map(i=>({...i,w:'all-day'})),...x.timed.map(i=>({...i,w:tmLabel(i.st),w2:tmLabel(i.en)}))];
+ return rows.length?rows.map(i=>`<button class="agrow" ${i.act}><i style="--c:${i.col}"></i><span class="t">${esc(i.t)}${i.loc?`<small>${esc(i.loc)}</small>`:''}</span><span class="w">${i.w}${i.w2?`<small>${i.w2}</small>`:''}</span></button>`).join(''):`<p class="muted small" style="padding:10px 0">Nothing planned. Tap + to add something.</p>`}
+const titleDay=d=>{const dt=parse(d);return `${DOW[(dt.getDay()+6)%7]} <span>${dt.getDate()} ${MON[dt.getMonth()]}</span>`};
+const titleMonth=m=>{const dt=parse(m+'-01');return `${MON[dt.getMonth()]} <span>${dt.getFullYear()}</span>`};
+
+/* day plan item sheet (new or edit) */
+const SL_DURS=[['15','15 minutes'],['30','30 minutes'],['45','45 minutes'],['60','1 hour'],['90','1½ hours'],['120','2 hours'],['150','2½ hours'],['180','3 hours'],['240','4 hours'],['300','5 hours'],['360','6 hours'],['480','8 hours']];
+function openSlot(d,k,start){const x=D(d);const isNew=!k;const key=k||keyOf(start);const title=isNew?'':(x.schedule[k]||'');const dur=String(((x.dur||{})[key])||(isNew?'60':''));const cat=isNew?'':validCat((x.cat||{})[key]);
+ MODAL={slot:true,d,k:isNew?null:k};const times=[];for(let n=0;n<24*60;n+=15)times.push(keyOf(n));if(!times.includes(key))times.push(key),times.sort();
+ const durs=[...(dur===''?[['','Until the next item']]:[]),...SL_DURS];if(dur&&!durs.some(([v])=>v===dur))durs.push([dur,dur+' minutes']);
+ document.getElementById('modalroot').innerHTML=`<div class="scrim" data-act="closeModal"><form class="modal" id="sform" role="dialog" aria-modal="true" aria-label="${isNew?'New':'Edit'} day plan item"><header><h2>${isNew?'New':'Edit'} day plan item</h2><p class="small muted" style="margin-top:4px">${isNew?'Adds to your day plan':'From your day plan'}${db.settings.gcal?' and your Sadhana calendar':''}.</p></header>
+  <div class="body"><label class="full">What<input class="field" id="s_title" value="${esc(title)}" placeholder="e.g. Chambers, call with solicitor, Pilates" autocomplete="off"></label>
+   <label>Day<input class="field" type="date" id="s_date" value="${d}"></label>
+   <label>Starts<select class="field" id="s_start">${times.map(v=>`<option value="${v}" ${v===key?'selected':''}>${tmLabel(minOf(v))}</option>`).join('')}</select></label>
+   <label>Length<select class="field" id="s_dur">${durs.map(([v,l])=>`<option value="${v}" ${v===dur?'selected':''}>${l}</option>`).join('')}</select></label>
+   <label>Category<select class="field" id="s_cat">${catOpts(cat,'No category')}</select></label></div>
+  <p class="small" id="ferr" style="color:var(--rust);padding:0 24px" hidden></p>
+  <footer>${isNew?'':`<button type="button" class="btn danger del" data-act="slotDel">Delete</button>`}<button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button type="submit" class="btn primary">${isNew?'Add':'Save'}</button></footer></form></div>`;
+ setTimeout(()=>{const f=document.getElementById('s_title');if(f)f.focus()},30)}
+function clearSlot(d,k){const x=D(d);x.schedule[k]='';if(x.dur&&x.dur[k])x.dur[k]='';if(x.cat&&x.cat[k])x.cat[k]=''}
+function saveSlot(){const {d,k}=MODAL;const v=id=>(document.getElementById(id)||{}).value||'';const title=v('s_title').trim();
+ if(!title){const e=document.getElementById('ferr');e.textContent='Add what it is to save.';e.hidden=false;document.getElementById('s_title').focus();return}
+ const nd=v('s_date')||d;let nk=v('s_start');const du=v('s_dur'),ca=v('s_cat');
+ if(k)clearSlot(d,k);const y=D(nd);y.dur=y.dur||{};y.cat=y.cat||{};
+ let moved=false;while((y.schedule[nk]||'').trim()&&minOf(nk)<24*60-15){nk=keyOf(minOf(nk)+15);moved=true}
+ y.schedule[nk]=title;y.dur[nk]=du;y.cat[nk]=ca;closeModal();save();render();if(moved)toast(`Something already starts then, so this starts at ${tmLabel(minOf(nk))}`)}
+
+/* month grid */
+function monthGrid(m,sel){const t=today(),first=parse(m+'-01'),lead=(first.getDay()+6)%7,n=daysIn(m);const cells=[];for(let i=0;i<lead;i++)cells.push('');for(let i=1;i<=n;i++)cells.push(`${m}-${pad(i)}`);while(cells.length%7)cells.push('');
+ return `<div class="mgrid"><div class="mdow">${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((x,i)=>`<span class="${i>4?'we':''}">${x}</span>`).join('')}</div><div class="mcells">${cells.map((d,i)=>{if(!d)return `<div class="mc blank"></div>`;
+  const x=calItems(d,{todos:true}),items=[...x.all,...x.timed],dt=parse(d),we=i%7>4;
+  const lines=items.slice(0,3).map(it=>it.st!=null?`<span class="ml"><i style="--c:${it.col}"></i>${esc(it.t)}</span>`:`<span class="ml all" style="--c:${it.col}">${esc(it.t)}</span>`).join('')+(items.length>3?`<span class="ml more">${items.length-3} more</span>`:'');
+  const dots=items.slice(0,3).map(it=>`<i class="${it.st!=null?'':'bar'}" style="--c:${it.col}"></i>`).join('');
+  return `<button class="mc ${d===t?'today':''} ${d===sel?'sel':''} ${we?'we':''}" data-act="pickDay" data-v="${d}" aria-label="${fLong(d)}${items.length?', '+items.length+' item'+(items.length===1?'':'s'):''}"><span class="mn">${dt.getDate()}</span><span class="mls">${lines}</span><span class="mdots">${dots}</span></button>`}).join('')}</div></div>`}
+function miniMonth(y,mi){const m=`${y}-${pad(mi+1)}`,t=today(),first=parse(m+'-01'),lead=(first.getDay()+6)%7,n=daysIn(m);const g=(db.months[m]||{}).goals||[];
+ return `<button class="mini" data-act="openMonth" data-v="${m}"><span class="mt ${ymOf(t)===m?'cur':''}">${MON[mi].slice(0,3)}</span><span class="mg">${Array.from({length:lead},()=>'<span></span>').join('')}${Array.from({length:n},(_,i)=>{const d=`${m}-${pad(i+1)}`;return `<span class="${d===t?'today':''}">${i+1}</span>`}).join('')}</span>${g.length?`<span class="muted small num">${g.filter(z=>z.done).length}/${g.length} goals</span>`:''}</button>`}
+
+function vPlanning(){const s=S.sub.planning;return `<div class="planx">${({day:vDay,week:vWeek,month:vMonth,year:vYear}[s]||vDay)()}</div>`}
 function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
  const tasks=db.todos.filter(t=>t.planned===d||t.due===d);
- const hours=[];for(let h=5;h<=22;h++){hours.push(pad(h)+':00');if(h<22)hours.push(pad(h)+':30')}
- const dur=x.dur||{},cover={},coverCat={};hours.forEach(h=>{const v=(x.schedule[h]||'').trim(),m=+dur[h];if(v&&m>30){const st=+h.slice(0,2)*60+(+h.slice(3));for(let t=st+30;t<st+m;t+=30){const k=pad(Math.floor(t/60))+':'+pad(t%60);if(!(x.schedule[k]||'').trim()){cover[k]=v;coverCat[k]=(x.cat||{})[h]}}}});
- const mm=k=>(+k.slice(0,2))*60+(+k.slice(3)),hk=n=>pad(Math.floor(n/60))+':'+pad(n%60);
- const xs=extOn(d),evAt={},evCont={},evBand=[];xs.forEach(e=>{if(!e.time){evBand.push(e);return}const st=mm(e.time),k=hk(st-st%30);if(!hours.includes(k)){evBand.push(e);return}(evAt[k]=evAt[k]||[]).push(e);const en=e.end?mm(e.end):st;for(let t=st-st%30+30;t<en;t+=30){const c=hk(t);if(hours.includes(c))(evCont[c]=evCont[c]||[]).push(e.title)}});
- const evRow=h=>(evAt[h]||evCont[h])?`<div class="evx">${(evAt[h]||[]).map(e=>`<span class="ev">${e.time!==h?hLabel(e.time)+' · ':''}${esc(e.title)}</span>`).join('')}${(evCont[h]||[]).map(t=>`<span class="ev cont">↳ ${esc(t)}</span>`).join('')}</div>`:'';
  const wid=x.workout||'';const fp=(db.fitPlan[monday(d)]||{})[(parse(d).getDay()+6)%7]||{};const planned=fp.w?nameOf('workouts',fp.w):'';
- return `${d===today()?carryCard():''}<div class="cardhead">${navBar('navDay',fLong(d)+' '+d.slice(0,4))}<span class="muted small">Daily framework: morning plan, evening review</span></div>
- <div class="spread">
-  <div class="pg">
-   <div class="row" style="justify-content:space-between"><span class="band">Date · ${fFull(d)}</span></div>
-   ${hinduLine(d)}
-   ${(()=>{const xs=evBand;return xs.length?`<div><span class="band">From your calendar</span><div class="stack" style="gap:4px;margin-top:6px">${xs.map(e=>`<div class="small"><b class="num">${e.time?hLabel(e.time):'All day'}</b> · ${esc(e.title)}</div>`).join('')}</div></div>`:''})()}
-   <div><span class="band">Schedule</span><div class="lines" style="margin-top:6px">${hours.map(h=>`<div class="ln${h.endsWith(':30')?' half':''}"${rowStyle((x.cat||{})[h]||coverCat[h])}><span class="h">${hLabel(h)}</span><input class="hand" id="s${h}" data-bind="${P}.schedule.${h}" value="${esc(x.schedule[h]||'')}" placeholder="${cover[h]?'↳ '+esc(cover[h]):' '}" aria-label="${hLabel(h)}"><select class="dur" id="d${h}" data-bind="${P}.dur.${h}" aria-label="Length for ${hLabel(h)}">${DURS.map(([v,l])=>`<option value="${v}" ${String(dur[h]||'')===v?'selected':''}>${l}</option>`).join('')}</select><select class="dcat" id="c${h}" data-bind="${P}.cat.${h}" aria-label="Category for ${hLabel(h)}">${catOpts((x.cat||{})[h],'Category')}</select>${evRow(h)}</div>`).join('')}</div></div>
-   <div><span class="band">Quick to-dos</span><div class="lines" style="margin-top:6px">${x.quick.map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.quick.${i}.done" ${q.done?'checked':''} aria-label="Done" style="margin-bottom:7px"><input class="hand" id="q${i}" data-bind="${P}.quick.${i}.t" value="${esc(q.t)}" ${q.done?'style="text-decoration:line-through;opacity:.6"':''}>${lineMove(d,'quick',i,q)}</div>`).join('')}</div></div>
-  </div>
-  <div class="pg">
-   <div><span class="band">Today I'm grateful for</span><input class="hand" id="grat" data-bind="${P}.grateful" value="${esc(x.grateful||'')}" style="border-bottom:1px solid var(--line)"></div>
+ return `${calHead(titleDay(d),'navDay',addBtnCal(d))}
+ ${d===today()?carryCard():''}
+ <div class="dayx">
+  <section class="card tlcard">${weekStrip(d)}${hinduLine(d)?`<div class="tlcap">${hinduLine(d)}</div>`:''}${timeline([d])}</section>
+  <div class="pg daypg">
    <div class="box3"><span class="band">3 non-negotiable things I'll get done today</span><div class="lines" style="margin-top:6px">${x.nonneg.slice(0,3).map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.nonneg.${i}.done" ${q.done?'checked':''} style="margin-bottom:7px" aria-label="Done"><input class="hand" id="nn${i}" data-bind="${P}.nonneg.${i}.t" value="${esc(q.t)}" placeholder="${i+1}.">${lineMove(d,'nonneg',i,q)}</div>`).join('')}</div></div>
    <div><div class="cardhead"><span class="band">Tasks</span><span class="muted small">From your to-do list</span></div>${unfinishedOn(d)?`<button class="btn sm movall" data-act="moveAll" data-from="${d}">${ic('right')}Move everything unfinished to ${moveLabel(d).toLowerCase()}</button>`:''}
     <div style="margin-top:4px">${tasks.map(t=>todoRow(t,d)).join('')||'<p class="muted small" style="padding:8px 0">No tasks planned for this day.</p>'}</div>
     <div class="addline"><input id="addDayTodo" data-add="dayTodo" placeholder="Add a task for this day and press Enter"></div></div>
-   <div><span class="band">Projects in progress</span><div style="margin-top:6px">${db.projects.filter(p=>p.status==='In progress').map(p=>{const pr=projProgress(p.id);return `<div class="todo"><button class="tt" data-act="openProject" data-id="${p.id}">${esc(p.name)}</button><span class="muted small num">${pr.done}/${pr.total}</span></div>`}).join('')||'<p class="muted small">None right now.</p>'}</div></div>
+   <div><span class="band">Quick to-dos</span><div class="lines" style="margin-top:6px">${x.quick.map((q,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.quick.${i}.done" ${q.done?'checked':''} aria-label="Done" style="margin-bottom:7px"><input class="hand" id="q${i}" data-bind="${P}.quick.${i}.t" value="${esc(q.t)}" ${q.done?'style="text-decoration:line-through;opacity:.6"':''}>${lineMove(d,'quick',i,q)}</div>`).join('')}</div></div>
+   <div><span class="band">Today I'm grateful for</span><input class="hand" id="grat" data-bind="${P}.grateful" value="${esc(x.grateful||'')}" style="border-bottom:1px solid var(--line)"></div>
    <div class="trackers">
     <div class="tk"><span class="band">Water</span><div class="glasses">${[1,2,3,4,5,6,7,8].map(n=>`<button class="${(x.water||0)>=n?'on':''}" data-act="water" data-n="${n}" aria-label="${n} glasses">${glass}</button>`).join('')}</div></div>
     <div class="tk"><span class="band">Mood</span><div class="faces">${[1,2,3,4,5].map(m=>`<button class="${x.mood===m?'on':''}" data-act="mood" data-d="${d}" data-n="${m}" aria-label="${MOODS[m]}" title="${MOODS[m]}">${face(m)}</button>`).join('')}</div></div>
@@ -1306,21 +1486,22 @@ function vDay(){const d=S.date,x=D(d),P=`days.${d}`;
     <div class="tk" style="grid-column:1/-1"><span class="band">Workout of the day</span><input class="hand" id="wod" data-bind="${P}.workout" value="${esc(wid)}" placeholder="${esc(planned||'Rest day')}"></div>
    </div>
    <div><span class="band">Habits</span><div class="hchips" style="margin-top:8px">${db.habits.map(h=>`<button class="hchip ${habitDone(d,h.id)?'on':''}" data-act="habit" data-d="${d}" data-h="${h.id}"><span class="dot"></span>${esc(h.name)}</button>`).join('')}</div></div>
+   <div><span class="band">Projects in progress</span><div style="margin-top:6px">${db.projects.filter(p=>p.status==='In progress').map(p=>{const pr=projProgress(p.id);return `<div class="todo"><button class="tt" data-act="openProject" data-id="${p.id}">${esc(p.name)}</button><span class="muted small num">${pr.done}/${pr.total}</span></div>`}).join('')||'<p class="muted small">None right now.</p>'}</div></div>
    <div><span class="band">Notes</span><textarea class="hand" id="notes" data-bind="${P}.notes" style="margin-top:6px">${esc(x.notes||'')}</textarea></div>
    <div class="box3"><span class="band">Daily framework</span><div style="margin-top:6px">${DAILY_RITUAL.map((r,i)=>`<label class="todo" style="border:0;padding:5px 0"><input type="checkbox" class="check" data-bind="${P}.ritual.${i}" ${x.ritual[i]?'checked':''}><span>${r}</span></label>`).join('')}</div></div>
   </div>
  </div>`}
-function vWeek(){const w=S.week,x=W(w),P=`weeks.${w}`,t=today();
- const days=[0,1,2,3,4,5,6].map(i=>addDays(w,i));
- return `<div class="cardhead">${navBar('navWeek','Week of '+fShort(w)+' '+w.slice(0,4))}</div>
+function vWeek(){const w=S.week,x=W(w),P=`weeks.${w}`;
+ const days=[0,1,2,3,4,5,6].map(i=>addDays(w,i));const a=parse(w),b=parse(days[6]);
+ const title=a.getMonth()===b.getMonth()?titleMonth(ymOf(w)):`${MON[a.getMonth()].slice(0,3)} to ${MON[b.getMonth()].slice(0,3)} <span>${b.getFullYear()}</span>`;
+ const addD=days.includes(S.date)?S.date:(days.includes(today())?today():w);
+ return `${calHead(title,'navWeek',addBtnCal(addD))}
+ <section class="card tlcard wk">${timeline(days)}</section>
  <div class="grid2 split2" style="align-items:start">
   <div class="stack">
    <section class="card"><h3>Weekly priorities</h3><p>Three to five things that would make this week a success.</p>
     <div class="lines" style="margin-top:10px">${x.priorities.map((p,i)=>`<div class="ln nohour"><input type="checkbox" class="check" data-bind="${P}.priorities.${i}.done" ${p.done?'checked':''} style="margin-bottom:7px" aria-label="Done"><input class="hand" id="wp${i}" data-bind="${P}.priorities.${i}.t" value="${esc(p.t)}" placeholder="${i+1}."></div>`).join('')}</div></section>
-   <section class="grid4" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr))">${days.map((d,i)=>{const ts=db.todos.filter(x2=>x2.planned===d||x2.due===d);const dd=db.days[d]||{};const sc=Object.values(dd.schedule||{}).filter(v=>v&&v.trim()).length;return `<div class="card flat" style="padding:14px;${d===t?'border-color:var(--sage)':''}"><div class="cardhead"><button class="btn ghost sm" style="padding:0;font-family:var(--serif);font-size:1.05rem;color:var(--ink)" data-act="openDay" data-v="${d}">${DOW[i].slice(0,3)} ${parse(d).getDate()}</button>${dd.mood?`<span title="${MOODS[dd.mood]}" style="width:10px;height:10px;border-radius:50%;background:var(--m${dd.mood})"></span>`:''}</div>
-    <input class="field" style="margin-top:8px;font-size:.85rem;padding:6px 8px" id="wf${i}" data-bind="${P}.focus.${i}" value="${esc(x.focus[i]||'')}" placeholder="Focus">
-    <div style="margin-top:8px;display:flex;flex-direction:column;gap:3px">${ts.slice(0,4).map(t2=>`<button class="ev ${t2.done?'t':''}" data-act="edit" data-col="todos" data-id="${t2.id}" style="${t2.done?'text-decoration:line-through':''}">${esc(t2.title)}</button>`).join('')}${ts.length>4?`<span class="muted small">+${ts.length-4} more</span>`:''}</div>
-    <p class="muted small" style="margin-top:6px">${sc?sc+' scheduled':''}</p></div>`}).join('')}</section>
+   <section class="card"><h3>Focus for each day</h3><div class="focusl" style="margin-top:8px">${days.map((d,i)=>{const dd=db.days[d]||{};return `<div class="fr"><button class="btn ghost sm" data-act="openDay" data-v="${d}">${DOW[i].slice(0,3)} ${parse(d).getDate()}</button><input class="field" id="wf${i}" data-bind="${P}.focus.${i}" value="${esc(x.focus[i]||'')}" placeholder="Focus">${dd.mood?`<span title="${MOODS[dd.mood]}" class="mdot" style="background:var(--m${dd.mood})"></span>`:'<span class="mdot"></span>'}</div>`}).join('')}</div></section>
    <section class="card"><h3>Habits this week</h3><div style="overflow-x:auto;margin-top:10px">${habitGrid(days)}</div></section>
    <section class="grid2"><div class="card"><h3>What went well</h3><textarea class="field" id="wwell" data-bind="${P}.well" style="margin-top:10px">${esc(x.well||'')}</textarea></div><div class="card"><h3>What I'll change</h3><textarea class="field" id="wchange" data-bind="${P}.change" style="margin-top:10px">${esc(x.change||'')}</textarea></div></section>
   </div>
@@ -1330,16 +1511,16 @@ function vWeek(){const w=S.week,x=W(w),P=`weeks.${w}`,t=today();
    <div style="margin-top:8px" class="small">${days.map((d,i)=>{const fp=(db.fitPlan[w]||{})[i]||{};const bits=[fp.w&&nameOf('workouts',fp.w),fp.d&&nameOf('meals',fp.d)].filter(Boolean);return bits.length?`<div class="sched"><div class="s"><span>${DOW[i].slice(0,3)}</span><span>${bits.map(esc).join(' · ')}</span></div></div>`:''}).join('')||'<span class="muted">Plan workouts and meals in Health &amp; fitness.</span>'}</div>
   </section>
  </div>`}
-function habitGrid(days){const t=today();if(!db.habits.length)return '<p class="muted small">No habits yet.</p>';
- return `<table class="hg"><thead><tr><th></th>${days.map(d=>`<th class="${d===t?'today':''}">${parse(d).getDate()}</th>`).join('')}<th></th></tr></thead><tbody>${db.habits.map(h=>{const n=days.filter(d=>habitDone(d,h.id)).length;const past=days.filter(d=>d<=t).length||1;return `<tr class="nohover"><td class="n">${esc(h.name)}</td>${days.map(d=>`<td><button class="hc ${habitDone(d,h.id)?'on':''} ${d>t?'fut':''}" data-act="habit" data-d="${d}" data-h="${h.id}" aria-label="${esc(h.name)} ${d}"></button></td>`).join('')}<td class="s num">${Math.round(n/past*100)}%</td></tr>`}).join('')}</tbody></table>`}
 function vMonth(){const m=S.month,x=M(m),P=`months.${m}`;
- const evs=db.events.filter(e=>e.date&&ymOf(e.date)===m).map(e=>[e.date,e.title,'']);
- const bds=db.birthdays.filter(b=>b.date&&b.date.slice(5,7)===m.slice(5)).map(b=>[m+'-'+b.date.slice(8),b.name+"'s birthday",'b']);
- const key=[...evs,...bds].sort((a,b)=>a[0]<b[0]?-1:1);
+ const sel=ymOf(S.date)===m?S.date:(m===ymOf(today())?today():m+'-01');
  const days=Array.from({length:daysIn(m)},(_,i)=>`${m}-${pad(i+1)}`);
  const spent=sum(db.transactions.filter(t=>t.type==='Expense'&&ymOf(t.date)===m),t=>t.amount),lim=sum(db.budgetCats,c=>c.limit);
  const done=x.goals.filter(g=>g.done).length;
- return `<div class="cardhead">${navBar('navMonth',fMonth(m))}</div>
+ return `${calHead(titleMonth(m),'navMonth',addBtnCal(sel))}
+ <div class="monthx">
+  <section class="card mcard">${monthGrid(m,sel)}</section>
+  <section class="card agcard"><div class="cardhead"><h3>${fLong(sel)}</h3><button class="btn sm" data-act="openDay" data-v="${sel}">Open day</button></div>${hinduLine(sel)}<div class="ag" style="margin-top:6px">${agenda(sel)}</div></section>
+ </div>
  <div class="grid2 split3" style="align-items:start">
   <div class="stack">
    <section class="card"><div class="cardhead"><h3>Monthly goals</h3><span class="muted small num">${done}/${x.goals.length} done</span></div>
@@ -1350,17 +1531,23 @@ function vMonth(){const m=S.month,x=M(m),P=`months.${m}`;
   </div>
   <div class="stack">
    <section class="card"><span class="eyebrow">Theme for the month</span><input class="field" id="mfocus" data-bind="${P}.focus" value="${esc(x.focus||'')}" style="margin-top:8px;font-family:var(--serif);font-size:1.3rem;border:0;padding:4px 0;background:none" placeholder="One word or phrase"></section>
-   <section class="card"><h3>Key dates</h3><div class="sched" style="margin-top:8px">${key.map(k=>`<div class="s"><span>${fShort(k[0])}</span><span>${esc(k[1])}</span></div>`).join('')||'<p class="muted small">No events or birthdays this month.</p>'}</div></section>
    <section class="card"><h3>Spending</h3><p class="num" style="margin-top:8px;font-family:var(--serif);font-size:1.4rem">${money0(spent)} <span class="muted small">of ${money0(lim)} budget</span></p><div class="bar" style="margin-top:8px"><i class="${spent>lim?'over':''}" style="width:${lim?Math.min(100,spent/lim*100):0}%"></i></div></section>
   </div>
  </div>`}
 function vYear(){const y=S.year,x=Y(y),P=`years.${y}`;
- return `<div class="cardhead">${navBar('navYear',y)}</div>
+ return `${calHead(y,'navYear')}
+ <section class="card"><div class="years">${MON.map((_,i)=>miniMonth(y,i)).join('')}</div></section>
  <section class="card"><span class="eyebrow">Word of the year</span><input class="field" id="yword" data-bind="${P}.word" value="${esc(x.word||'')}" style="margin-top:6px;font-family:var(--serif);font-size:2rem;border:0;padding:0;background:none" placeholder="Choose a word"></section>
  <div class="grid3">${AREAS.map(a=>{const gs=x.goals.map((g,i)=>[g,i]).filter(([g])=>g.area===a);const dn=gs.filter(([g])=>g.done).length;return `<section class="card"><div class="cardhead"><h3>${a}</h3><span class="muted small num">${dn}/${gs.length}</span></div><div class="bar" style="margin-top:10px"><i style="width:${gs.length?dn/gs.length*100:0}%"></i></div>
   <div style="margin-top:8px">${gs.map(([g,i])=>`<div class="todo ${g.done?'done':''}"><input type="checkbox" class="check" data-bind="${P}.goals.${i}.done" ${g.done?'checked':''} aria-label="Done"><span class="tt" style="font-size:.98rem">${esc(g.t)}</span><button class="iconbtn" data-act="rmGoal" data-p="${P}.goals" data-i="${i}" aria-label="Remove">${ic('x')}</button></div>`).join('')}</div>
-  <div class="addline"><input id="yg${a}" data-add="yearGoal" data-area="${a}" placeholder="Add a goal"></div></section>`}).join('')}</div>
- <section class="card"><h3>Month by month</h3><div class="grid4" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-top:12px">${MON.map((mn,i)=>{const k=`${y}-${pad(i+1)}`;const g=(db.months[k]||{}).goals||[];return `<button class="ovc" style="padding:12px 14px;gap:4px" data-act="openMonth" data-v="${k}"><span class="t" style="font-size:1.05rem">${mn}</span><span class="muted small num">${g.length?g.filter(z=>z.done).length+'/'+g.length+' goals':'No goals yet'}</span></button>`}).join('')}</div></section>`}
+  <div class="addline"><input id="yg${a}" data-add="yearGoal" data-area="${a}" placeholder="Add a goal"></div></section>`}).join('')}</div>`}
+
+const DAILY_RITUAL=['Check today\'s schedule','Pick three non-negotiables','Plan meals and movement','Evening: tick off, log mood','Evening: glance at tomorrow'];
+const WEEKLY_RITUAL=['Review last week and tick off wins','Brain-dump everything on your mind','Choose three to five priorities','Give each priority a day','Plan workouts and meals','Check budget and invoices','Look ahead at birthdays and events'];
+const lineMove=(d,k,i,q)=>(q.t||'').trim()&&!q.done&&!q.gone?`<button class="movebtn line" data-act="dayMove" data-d="${d}" data-k="${k}" data-i="${i}" title="Move to ${fShort(moveTarget(d))}" aria-label="Move to ${moveLabel(d).toLowerCase()}">${moveLabel(d)} ${ic('right')}</button>`:'';
+const unfinishedOn=d=>db.todos.filter(t=>isOn(t,d)&&(t.planned===d||t.due===d||d===today())).length+(db.days[d]?['nonneg','quick'].reduce((n,k)=>n+(db.days[d][k]||[]).filter(q=>(q.t||'').trim()&&!q.done&&!q.gone).length,0):0);
+function habitGrid(days){const t=today();if(!db.habits.length)return '<p class="muted small">No habits yet.</p>';
+ return `<table class="hg"><thead><tr><th></th>${days.map(d=>`<th class="${d===t?'today':''}">${parse(d).getDate()}</th>`).join('')}<th></th></tr></thead><tbody>${db.habits.map(h=>{const n=days.filter(d=>habitDone(d,h.id)).length;const past=days.filter(d=>d<=t).length||1;return `<tr class="nohover"><td class="n">${esc(h.name)}</td>${days.map(d=>`<td><button class="hc ${habitDone(d,h.id)?'on':''} ${d>t?'fut':''}" data-act="habit" data-d="${d}" data-h="${h.id}" aria-label="${esc(h.name)} ${d}"></button></td>`).join('')}<td class="s num">${Math.round(n/past*100)}%</td></tr>`}).join('')}</tbody></table>`}
 
 /* ---------- PROJECTS ---------- */
 function projProgress(id){const ts=db.todos.filter(t=>t.project===id);return {total:ts.length,done:ts.filter(t=>t.done).length}}
@@ -1562,8 +1749,8 @@ function signBanner(){if(!configured())return '';
 
 const VIEWS={home:vHome,planning:vPlanning,projects:vProjects,growth:vGrowth,health:vHealth,shop:vShop,finance:vFinance,org:vOrg,bar:vBar,sat:vSat,settings:vSettings};
 function renderNav(){document.getElementById('nav').innerHTML=NAV.map(([k,l])=>`<button class="${S.view===k?'on':''}" data-act="nav" data-v="${k}">${ic(NICON[k])}<span>${l}</span></button>`).join('')}
-function render(){const a=document.activeElement,aid=a&&a.id,pos=a&&a.selectionStart;
- renderNav();document.getElementById('view').innerHTML=signBanner()+VIEWS[S.view]();{const ts=document.getElementById('tmslot');if(ts)ts.innerHTML=(S.view==='home'||S.view==='bar')?'':tmPill()}tickClock();hydrate();
+function render(){const a=document.activeElement,aid=a&&a.id,pos=a&&a.selectionStart;const tl0=document.getElementById('tls'),tlTop=tl0?tl0.scrollTop:null,tlKey=tl0?tl0.dataset.key:null;
+ renderNav();document.getElementById('view').innerHTML=signBanner()+VIEWS[S.view]();{const ts=document.getElementById('tmslot');if(ts)ts.innerHTML=(S.view==='home'||S.view==='bar')?'':tmPill()}tickClock();hydrate();{const n=document.getElementById('tls');if(n){n.scrollTop=(tlTop!=null&&n.dataset.key===tlKey)?tlTop:(+n.dataset.start)/60*HH}}
  if(aid){const e=document.getElementById(aid);if(e){e.focus();try{if(pos!=null)e.setSelectionRange(pos,pos)}catch(_){}}}}
 async function hydrate(){for(const el of document.querySelectorAll('[data-file]')){const u=await fileURL(el.dataset.file);if(u)el.src=u}}
 function applyTheme(){const t=db.settings.theme;if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;else if(document.documentElement.dataset.theme&&document.documentElement.dataset.setBy==='app')delete document.documentElement.dataset.theme;document.documentElement.dataset.setBy=(t==='system')?'':'app'}
@@ -1646,6 +1833,11 @@ const A={
  coPick:e=>{if(e.nextElementSibling&&e.nextElementSibling.classList.contains('copick'))return;const i=document.createElement('input');i.type='date';i.className='field copick';i.min=today();i.value=addDays(today(),1);i.dataset.key=e.dataset.key;i.setAttribute('aria-label','Choose a day');e.after(i);e.hidden=true;i.focus();try{i.showPicker()}catch(x){}},
  coDrop:e=>{snapUndo();coDrop(e.dataset.key);save();render();toast('Let go',true)},
  coAll:()=>{snapUndo();const xs=carried();xs.forEach(x=>coMove(x.key,today()));save();render();toast(`Moved ${xs.length} to today`,true)},
+ slotNew:e=>{const d=e.dataset.d||S.date;const n=new Date();const st=d===today()?Math.min((n.getHours()+1)*60,23*60):9*60;openSlot(d,null,st)},
+ slotEdit:e=>openSlot(e.dataset.d,e.dataset.k),
+ slotDel:()=>{const {d,k}=MODAL||{};if(!k)return;snapUndo();clearSlot(d,k);closeModal();save();render();toast('Removed from your day plan',true)},
+ pickDay:e=>{S.date=e.dataset.v;if(S.sub.planning==='day'){S.week=monday(S.date);S.month=ymOf(S.date)}render()},
+ extInfo:e=>toast(`${e.dataset.t} · ${e.dataset.w}${e.dataset.c?' · '+e.dataset.c:''}. Change it in Apple or Google Calendar.`),
  moveTodo:e=>{const t=byId('todos',e.dataset.id);if(!t)return;const to=moveTarget(e.dataset.from||today());snapUndo();const due=moveTodoTo(t,to);save();render();toast(`Moved to ${dayWord(to)}${due?', due date too':''}`,true)},
  dayMove:e=>{const d=e.dataset.d,to=moveTarget(d);snapUndo();const w=moveDayLine(d,e.dataset.k,+e.dataset.i,to);if(!w)return;save();render();toast(`Moved to ${dayWord(to)}'s ${w}`,true)},
  moveAll:e=>{const r=moveAllFrom(e.dataset.from||today());if(!r.n){toast('Nothing left to move');return}save();render();toast(`Moved ${r.n} to ${dayWord(r.to)}${r.due?` (${r.due} due date${r.due===1?'':'s'} too)`:''}`,true)},
@@ -1715,7 +1907,10 @@ document.addEventListener('input',ev=>{const t=ev.target;if(t.dataset.bind&&t.ty
  if(t.dataset.filter){S.f[t.dataset.filter]=t.value;render()}});
 document.addEventListener('change',ev=>{const t=ev.target;if(!t.dataset.bind)return;if(t.type==='checkbox'){setPath(t.dataset.bind,t.checked);save();render()}else if(t.tagName==='SELECT'){setPath(t.dataset.bind,t.value);save();if(t.dataset.bind==='settings.theme')applyTheme();render()}
  else if(t.dataset.bind.startsWith('settings.'))render()});
-document.addEventListener('submit',ev=>{if(ev.target.id==='mform'){ev.preventDefault();submitForm()}});
+document.addEventListener('submit',ev=>{if(ev.target.id==='mform'){ev.preventDefault();submitForm()}else if(ev.target.id==='sform'){ev.preventDefault();saveSlot()}});
+document.addEventListener('dblclick',ev=>{const c=ev.target.closest&&ev.target.closest('.mc[data-v]');if(c){S.sub.planning='day';S.date=c.dataset.v;render()}});
+document.addEventListener('click',ev=>{const c=ev.target.closest&&ev.target.closest('.tlc');if(!c||ev.target.closest('[data-act]'))return;const r=c.getBoundingClientRect();const y=ev.clientY-r.top;const n=Math.max(0,Math.min(24*60-15,Math.floor(y/HH*60/15)*15));openSlot(c.dataset.tl,null,n)});
+setInterval(()=>{const n=new Date(),m=n.getHours()*60+n.getMinutes();document.querySelectorAll('.tlnow,.nowl').forEach(el=>{el.style.top=(m/60*HH)+'px';if(el.classList.contains('nowl'))el.textContent=pad(n.getHours())+':'+pad(n.getMinutes())})},30000);
 document.getElementById('importfile').addEventListener('change',async ev=>{const f=ev.target.files[0];if(!f)return;try{const j=JSON.parse(await f.text());if(!j.db)throw 0;for(const [k,r] of Object.entries(j.files||{})){const b=await (await fetch(r.data)).blob();await local.put('files',k,{name:r.name,type:r.type,blob:b});if(!G.pendingFiles.includes(k))G.pendingFiles.push(k)}db=j.db;delete db.driveFiles;ensure();save();applyTheme();render();toast('Backup restored')}catch(e){toast('That file is not a planner backup')}ev.target.value=''});
 
 /* ---------- boot ---------- */
