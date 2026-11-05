@@ -628,6 +628,8 @@ const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const G={token:null,exp:0,fileId:null,version:null,base:null,rev:0,syncedRev:0,syncing:false,again:false,pendingFiles:[],status:'',remoteWaiting:null};
 const SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const CAL_SCOPES=['https://www.googleapis.com/auth/calendar.app.created','https://www.googleapis.com/auth/calendar.calendarlist.readonly','https://www.googleapis.com/auth/calendar.events.readonly'];
+const CAL_EDIT='https://www.googleapis.com/auth/calendar.events';
+const calScopes=()=>[...CAL_SCOPES,...(db&&db.settings&&db.settings.gcalEdit?[CAL_EDIT]:[])];
 const wantCal=()=>!!(db&&db.settings&&db.settings.gcal);
 const DRIVE='https://www.googleapis.com/drive/v3',UPLOAD='https://www.googleapis.com/upload/drive/v3',DATA='sadhana.json';
 const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
@@ -665,7 +667,7 @@ function signIn(silent,consent,withCal){
  if(!configured()){toast('Add your Google client ID to config.js first');return}
  const state=uid()+uid();ss.set('sadhana.state',state);if(silent)ss.set('sadhana.silentAt',String(Date.now()));
  const code=!!HELPER()&&!silent;
- persist().then(async()=>{const p=new URLSearchParams({client_id:CFG.googleClientId,redirect_uri:appUrl(),response_type:code?'code':'token',scope:[SCOPE,...((withCal||wantCal())?CAL_SCOPES:[])].join(' '),include_granted_scopes:'true',state});
+ persist().then(async()=>{const p=new URLSearchParams({client_id:CFG.googleClientId,redirect_uri:appUrl(),response_type:code?'code':'token',scope:[SCOPE,...((withCal||wantCal())?calScopes():[])].join(' '),include_granted_scopes:'true',state});
   if(code){p.set('access_type','offline');consent=true;
    try{const v=b64u(crypto.getRandomValues(new Uint8Array(32)));ss.set('sadhana.pkce',v);p.set('code_challenge',b64u(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(v))));p.set('code_challenge_method','S256')}catch(e){ss.set('sadhana.pkce','')}}const hint=ls.get('sadhana.email');if(hint)p.set('login_hint',hint);const pr=silent?'none':consent?'consent':(hint?'':'select_account');if(pr)p.set('prompt',pr);
   location.href='https://accounts.google.com/o/oauth2/v2/auth?'+p})}
@@ -823,7 +825,8 @@ function bkLabel(f){const t=f.createdTime&&!isNaN(Date.parse(f.createdTime))?new
    - Permissions are only requested once she taps "Connect Google Calendar" in Settings. */
 const CAL='https://www.googleapis.com/calendar/v3';
 const calGranted=()=>tokenOk()&&(G.scopes||'').includes('calendar.app.created');
-const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('calendar.events.readonly')&&(G.scopes||'').includes('calendar.calendarlist.readonly');
+const calCanRead=()=>tokenOk()&&(G.scopes||'').includes('auth/calendar.events')&&(G.scopes||'').includes('calendar.calendarlist.readonly');
+const calCanEdit=()=>tokenOk()&&(G.scopes||'').split(' ').includes(CAL_EDIT);
 const C={calId:null,list:null,busy:false,again:false,timer:null,last:0,ext:{},extAt:{},loading:{},error:null,pushed:0};
 const TZ=(()=>{try{return Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/London'}catch(e){return 'Europe/London'}})();
 const calDefaults=()=>({hearings:true,events:true,birthdays:true,seva:true,trips:true,dates:true,schedule:true,tasks:true,nonneg:true,hindu:true});
@@ -917,8 +920,9 @@ async function pushCalendar(){
  C.pushed=n;return n}
 
 /* her own calendars */
-async function calList(){if(C.list)return C.list;const j=await calApi('/users/me/calendarList?maxResults=250');C.list=(j.items||[]).filter(c=>!(c.description||'').startsWith(CAL_TAG)).map(c=>({id:c.id,name:c.summaryOverride||c.summary,primary:!!c.primary,color:c.backgroundColor}));return C.list}
+async function calList(){if(C.list)return C.list;const j=await calApi('/users/me/calendarList?maxResults=250');C.list=(j.items||[]).filter(c=>!(c.description||'').startsWith(CAL_TAG)).map(c=>({id:c.id,name:c.summaryOverride||c.summary,primary:!!c.primary,color:c.backgroundColor,role:c.accessRole||''}));return C.list}
 const showCals=()=>db.settings.gcalShow||['primary'];
+const EXT={};
 async function loadMonth(ym){
  if(!calCanRead()||C.loading[ym])return;if(C.extAt[ym]&&Date.now()-C.extAt[ym]<60000)return;
  C.loading[ym]=true;
@@ -927,10 +931,11 @@ async function loadMonth(ym){
   const out=[];
   const ownMeta={};if(calGranted()){try{const o=await ourCals();if(o.main){ids.push(o.main.id);ownMeta[o.main.id]={name:'Sadhana',color:'',cat:''}}for(const [cid,c] of Object.entries(o.byCat)){ids.push(c.id);ownMeta[c.id]={name:c.summary,color:'',cat:cid}}}catch(e){}}
   for(const id of [...new Set(ids)]){const meta=ownMeta[id]||(lst.find(c=>c.id===id)||{name:'Calendar'});
-   const j=await calApi(`/calendars/${encodeURIComponent(id)}/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${encodeURIComponent(tMin)}&timeMax=${encodeURIComponent(tMax)}&fields=items(summary,start,end,location,status,extendedProperties)`);
+   const j=await calApi(`/calendars/${encodeURIComponent(id)}/events?singleEvents=true&orderBy=startTime&maxResults=250&timeMin=${encodeURIComponent(tMin)}&timeMax=${encodeURIComponent(tMax)}&fields=items(id,recurringEventId,summary,start,end,location,status,extendedProperties)`);
    for(const ev of j.items||[]){if(ev.status==='cancelled')continue;if((((ev.extendedProperties||{}).private)||{}).sadhana==='1')continue;
-    if(ev.start.date){let d=ev.start.date;while(d<ev.end.date){out.push({date:d,title:ev.summary||'(busy)',time:'',cal:meta.name,color:meta.color,cat:meta.cat||''});d=addDays(d,1)}}
-    else{const s=new Date(ev.start.dateTime),en=new Date(ev.end.dateTime||ev.start.dateTime);out.push({date:iso(s),time:`${pad(s.getHours())}:${pad(s.getMinutes())}`,end:iso(en)===iso(s)?`${pad(en.getHours())}:${pad(en.getMinutes())}`:'24:00',title:ev.summary||'(busy)',cal:meta.name,color:meta.color,cat:meta.cat||'',loc:ev.location||''})}}}
+    const ek=id+'|'+ev.id;EXT[ek]={calId:id,id:ev.id,own:!!ownMeta[id],role:ownMeta[id]?'owner':(meta.role||''),cal:meta.name,rec:!!ev.recurringEventId,summary:ev.summary||'',location:ev.location||'',start:ev.start,end:ev.end};
+    if(ev.start.date){let d=ev.start.date;while(d<ev.end.date){out.push({date:d,title:ev.summary||'(busy)',time:'',cal:meta.name,color:meta.color,cat:meta.cat||'',ek});d=addDays(d,1)}}
+    else{const s=new Date(ev.start.dateTime),en=new Date(ev.end.dateTime||ev.start.dateTime);out.push({date:iso(s),time:`${pad(s.getHours())}:${pad(s.getMinutes())}`,end:iso(en)===iso(s)?`${pad(en.getHours())}:${pad(en.getMinutes())}`:'24:00',title:ev.summary||'(busy)',cal:meta.name,color:meta.color,cat:meta.cat||'',loc:ev.location||'',ek})}}}
   C.ext[ym]=out;C.extAt[ym]=Date.now();C.error=null}
  catch(e){C.error=e.code==='scope'?'scope':'load';C.extAt[ym]=Date.now()}
  C.loading[ym]=false;refreshView()}
@@ -1401,7 +1406,7 @@ function calItems(d,opt={}){const cm=catMap(),all=[],timed=[];const okT=v=>v&&/^
  for(const s of db.seva||[])if(s.due===d&&!s.done&&s.title)all.push({t:`🪷 ${s.title}`,col:catColor(validCat(cm.seva))||'var(--clay)',act:`data-act="edit" data-col="seva" data-id="${s.id}"`});
  if(db.settings.hinduShow!==false&&typeof hinduOn==='function'){const x=hinduOn(d);if(x&&(x.ek||x.major))all.push({t:`${x.ek?'🌙':'🪔'} ${(x.o||'Ekadashi').split('; ')[0]}`,col:catColor(validCat(cm.hindu))||'#D08C3C',act:`data-act="nav" data-v="sat"`})}
  if(opt.todos)for(const t of db.todos||[]){if(t.done||!t.title)continue;if(t.planned===d||(!t.planned&&t.due===d))all.push({t:`☐ ${t.title}`,col:catColor(validCat(t.category))||'var(--muted)',act:`data-act="edit" data-col="todos" data-id="${t.id}"`,todo:1})}
- for(const e of extOn(d)){const col=e.color||catColor(validCat(e.cat))||NOCOL;const it={t:e.title,col,ext:1,loc:e.loc||'',act:`data-act="extInfo" data-t="${esc(e.title)}" data-c="${esc(e.cal||'')}" data-w="${e.time?esc(hLabel(e.time)+(e.end&&e.end!=='24:00'?' to '+hLabel(e.end):'')):'All day'}"`};
+ for(const e of extOn(d)){const col=e.color||catColor(validCat(e.cat))||NOCOL;const it={t:e.title,col,ext:1,loc:e.loc||'',act:`data-act="extEdit" data-ek="${esc(e.ek||'')}" data-t="${esc(e.title)}" data-c="${esc(e.cal||'')}" data-w="${e.time?esc(hLabel(e.time)+(e.end&&e.end!=='24:00'?' to '+hLabel(e.end):'')):'All day'}"`};
   if(e.time){it.st=minOf(e.time);it.en=e.end?Math.max(minOf(e.end==='24:00'?'24:00':e.end),it.st+15):it.st+60;if(e.end==='24:00')it.en=1440;timed.push(it)}else all.push(it)}
  timed.sort((a,b)=>a.st-b.st||b.en-a.en);return {all,timed}}
 /* side-by-side columns for overlapping blocks, like Apple Calendar */
@@ -1430,6 +1435,39 @@ function agenda(d){const x=calItems(d,{todos:true});const rows=[...x.all.map(i=>
  return rows.length?rows.map(i=>`<button class="agrow" ${i.act}><i style="--c:${i.col}"></i><span class="t">${esc(i.t)}${i.loc?`<small>${esc(i.loc)}</small>`:''}</span><span class="w">${i.w}${i.w2?`<small>${i.w2}</small>`:''}</span></button>`).join(''):`<p class="muted small" style="padding:10px 0">Nothing planned. Tap + to add something.</p>`}
 const titleDay=d=>{const dt=parse(d);return `${DOW[(dt.getDay()+6)%7]} <span>${dt.getDate()} ${MON[dt.getMonth()]}</span>`};
 const titleMonth=m=>{const dt=parse(m+'-01');return `${MON[dt.getMonth()]} <span>${dt.getFullYear()}</span>`};
+
+/* editing an event from her own calendars (Google, which Apple Calendar shows) */
+const extEditable=x=>x&&(x.role==='owner'||x.role==='writer')&&(x.own||calCanEdit());
+function openExt(ek){const x=EXT[ek];if(!x)return;
+ const allDay=!!x.start.date;const sd=allDay?x.start.date:iso(new Date(x.start.dateTime));const s0=allDay?0:(()=>{const d=new Date(x.start.dateTime);return d.getHours()*60+d.getMinutes()})();
+ const len=allDay?0:Math.max(15,Math.round((new Date(x.end.dateTime)-new Date(x.start.dateTime))/60000));
+ const times=[];for(let n=0;n<24*60;n+=15)times.push(keyOf(n));const key=keyOf(s0);if(!times.includes(key))times.push(key),times.sort();
+ const durs=[...SL_DURS];if(!allDay&&!durs.some(([v])=>+v===len))durs.push([String(len),len>=60?`${Math.floor(len/60)} h ${len%60?len%60+' min':''}`.trim():len+' minutes']);durs.sort((a,b)=>a[0]-b[0]);
+ MODAL={ext:true,ek};
+ document.getElementById('modalroot').innerHTML=`<div class="scrim" data-act="closeModal"><form class="modal" id="xform" role="dialog" aria-modal="true" aria-label="Edit event"><header><h2>Edit event</h2><p class="small muted" style="margin-top:4px">In your <b>${esc(x.cal||'Google')}</b> calendar. Changes show in Apple Calendar too.${x.rec?' This changes this one occurrence only.':''}</p></header>
+  <div class="body"><label class="full">Title<input class="field" id="x_title" value="${esc(x.summary)}" autocomplete="off"></label>
+   <label>Day<input class="field" type="date" id="x_date" value="${sd}"></label>
+   <label class="cb" style="align-self:end;padding-bottom:10px"><input type="checkbox" class="check" id="x_all" ${allDay?'checked':''}>All day</label>
+   <label>Starts<select class="field" id="x_start" ${allDay?'disabled':''}>${times.map(v=>`<option value="${v}" ${v===key?'selected':''}>${tmLabel(minOf(v))}</option>`).join('')}</select></label>
+   <label>Length<select class="field" id="x_dur" ${allDay?'disabled':''}>${durs.map(([v,l])=>`<option value="${v}" ${+v===(len||60)?'selected':''}>${l}</option>`).join('')}</select></label>
+   <label class="full">Location<input class="field" id="x_loc" value="${esc(x.location)}" autocomplete="off"></label></div>
+  <p class="small" id="ferr" style="color:var(--rust);padding:0 24px" hidden></p>
+  <footer><button type="button" class="btn danger del" data-act="extDel">Delete</button><button type="button" class="btn ghost" data-act="closeModal">Cancel</button><button type="submit" class="btn primary">Save</button></footer></form></div>`;
+ setTimeout(()=>{const f=document.getElementById('x_title');if(f)f.focus()},30)}
+function askCalEdit(){MODAL={ask:true};
+ document.getElementById('modalroot').innerHTML=`<div class="scrim" data-act="closeModal"><div class="modal" role="dialog" aria-modal="true" aria-label="Allow editing"><header><h2>Edit your calendar events here</h2></header>
+  <div class="body" style="display:block"><p>To change events from your Apple and Google calendars inside Sadhana, Google needs you to allow it once. Sadhana only changes an event when you edit it here.</p><p class="small muted" style="margin-top:8px">Google will ask you to approve, then bring you straight back.</p></div>
+  <footer><button type="button" class="btn ghost" data-act="closeModal">Not now</button><button type="button" class="btn primary gbtn" data-act="allowCalEdit">${GICON}Allow editing</button></footer></div></div>`}
+function extTime(d,mins){return {dateTime:`${d}T${keyOf(Math.min(mins,24*60-1))}:00`,timeZone:TZ}}
+async function saveExt(){const x=EXT[MODAL.ek];if(!x)return closeModal();const v=id=>(document.getElementById(id)||{}).value||'';
+ const title=v('x_title').trim(),d=v('x_date'),all=document.getElementById('x_all').checked,st=minOf(v('x_start')),len=+v('x_dur')||60;
+ if(!title||!d){const e=document.getElementById('ferr');e.textContent='Add a title and a day.';e.hidden=false;return}
+ let start,end;if(all){const span=x.start.date?Math.max(1,diffDays(x.start.date,x.end.date)):1;start={date:d};end={date:addDays(d,span)}}
+ else{const en=st+len;start=extTime(d,st);end=en>=24*60?{dateTime:`${addDays(d,1)}T${keyOf(en-24*60)}:00`,timeZone:TZ}:extTime(d,en)}
+ const body={summary:title,location:v('x_loc').trim(),start,end};
+ const btn=document.querySelector('#xform button[type=submit]');if(btn){btn.disabled=true;btn.textContent='Saving…'}
+ try{await calApi(`/calendars/${encodeURIComponent(x.calId)}/events/${encodeURIComponent(x.id)}?sendUpdates=none`,{method:'PATCH',json:body});closeModal();C.extAt={};toast('Saved to your calendar');refreshView()}
+ catch(e){if(btn){btn.disabled=false;btn.textContent='Save'}const er=document.getElementById('ferr');er.textContent=e.code==='offline'?'You seem to be offline. Try again when you are connected.':e.code==='scope'||e.code==='auth'?'Google did not allow this change. Reconnect in Settings and try again.':'Google could not save that change. Try again in a moment.';er.hidden=false}}
 
 /* day plan item sheet (new or edit) */
 const SL_DURS=[['15','15 minutes'],['30','30 minutes'],['45','45 minutes'],['60','1 hour'],['90','1½ hours'],['120','2 hours'],['150','2½ hours'],['180','3 hours'],['240','4 hours'],['300','5 hours'],['360','6 hours'],['480','8 hours']];
@@ -1837,6 +1875,12 @@ const A={
  slotEdit:e=>openSlot(e.dataset.d,e.dataset.k),
  slotDel:()=>{const {d,k}=MODAL||{};if(!k)return;snapUndo();clearSlot(d,k);closeModal();save();render();toast('Removed from your day plan',true)},
  pickDay:e=>{S.date=e.dataset.v;if(S.sub.planning==='day'){S.week=monday(S.date);S.month=ymOf(S.date)}render()},
+ extEdit:e=>{const x=EXT[e.dataset.ek];if(x&&extEditable(x)){openExt(e.dataset.ek);return}
+  if(x&&(x.role==='owner'||x.role==='writer')&&!x.own&&!calCanEdit()){askCalEdit();return}
+  toast(`${e.dataset.t} · ${e.dataset.w}${e.dataset.c?' · '+e.dataset.c:''}. That calendar is read-only.`)},
+ allowCalEdit:()=>{db.settings.gcalEdit=true;G.rev++;persist().then(()=>signIn(false,true,true))},
+ extDel:async e=>{if(!e.classList.contains('sure')){e.classList.add('sure');e.textContent='Tap again to delete';return}
+  const x=EXT[MODAL&&MODAL.ek];if(!x)return;try{await calApi(`/calendars/${encodeURIComponent(x.calId)}/events/${encodeURIComponent(x.id)}?sendUpdates=none`,{method:'DELETE'});closeModal();C.extAt={};toast('Deleted from your calendar');refreshView()}catch(err){toast('Google could not delete that. Try again in a moment.')}},
  extInfo:e=>toast(`${e.dataset.t} · ${e.dataset.w}${e.dataset.c?' · '+e.dataset.c:''}. Change it in Apple or Google Calendar.`),
  moveTodo:e=>{const t=byId('todos',e.dataset.id);if(!t)return;const to=moveTarget(e.dataset.from||today());snapUndo();const due=moveTodoTo(t,to);save();render();toast(`Moved to ${dayWord(to)}${due?', due date too':''}`,true)},
  dayMove:e=>{const d=e.dataset.d,to=moveTarget(d);snapUndo();const w=moveDayLine(d,e.dataset.k,+e.dataset.i,to);if(!w)return;save();render();toast(`Moved to ${dayWord(to)}'s ${w}`,true)},
@@ -1907,7 +1951,8 @@ document.addEventListener('input',ev=>{const t=ev.target;if(t.dataset.bind&&t.ty
  if(t.dataset.filter){S.f[t.dataset.filter]=t.value;render()}});
 document.addEventListener('change',ev=>{const t=ev.target;if(!t.dataset.bind)return;if(t.type==='checkbox'){setPath(t.dataset.bind,t.checked);save();render()}else if(t.tagName==='SELECT'){setPath(t.dataset.bind,t.value);save();if(t.dataset.bind==='settings.theme')applyTheme();render()}
  else if(t.dataset.bind.startsWith('settings.'))render()});
-document.addEventListener('submit',ev=>{if(ev.target.id==='mform'){ev.preventDefault();submitForm()}else if(ev.target.id==='sform'){ev.preventDefault();saveSlot()}});
+document.addEventListener('submit',ev=>{if(ev.target.id==='mform'){ev.preventDefault();submitForm()}else if(ev.target.id==='sform'){ev.preventDefault();saveSlot()}else if(ev.target.id==='xform'){ev.preventDefault();saveExt()}});
+document.addEventListener('change',ev=>{if(ev.target.id==='x_all'){['x_start','x_dur'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=ev.target.checked})}});
 document.addEventListener('dblclick',ev=>{const c=ev.target.closest&&ev.target.closest('.mc[data-v]');if(c){S.sub.planning='day';S.date=c.dataset.v;render()}});
 document.addEventListener('click',ev=>{const c=ev.target.closest&&ev.target.closest('.tlc');if(!c||ev.target.closest('[data-act]'))return;const r=c.getBoundingClientRect();const y=ev.clientY-r.top;const n=Math.max(0,Math.min(24*60-15,Math.floor(y/HH*60/15)*15));openSlot(c.dataset.tl,null,n)});
 setInterval(()=>{const n=new Date(),m=n.getHours()*60+n.getMinutes();document.querySelectorAll('.tlnow,.nowl').forEach(el=>{el.style.top=(m/60*HH)+'px';if(el.classList.contains('nowl'))el.textContent=pad(n.getHours())+':'+pad(n.getMinutes())})},30000);
