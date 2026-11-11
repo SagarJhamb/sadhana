@@ -16,7 +16,7 @@ A calm, all-in-one life planner for a barrister who follows BAPS satsang. It run
 | Shopping list | Grouped by aisle, fills from planned meals and recipes, "usuals", copy as text |
 | Finance | Transactions, budget categories, monthly and yearly views |
 | Organisation | Events, birthdays, trips, restaurants, outfits, date ideas |
-| Barrister billing | Matters, court diary (hearings, papers and skeleton deadlines), work log, time-tracking timer, fee notes |
+| Legal tracker | Matters table (summary, instructions date, instructed by, funding type, current stage), case law library (upload judgments, case types, her own summaries), work log, time-tracking timer, fee notes |
 | Satsang | BAPS Hindu calendar (tithi, Ekadashi, festivals), sabha notes, ashirvad, seva |
 | Settings | Google sign-in, calendar sync, categories, alerts, backups, import and export |
 

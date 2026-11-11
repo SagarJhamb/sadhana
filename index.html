@@ -71,6 +71,9 @@ p{margin:0}
 .wrap{max-width:1260px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
 .pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .pagehead p{color:var(--muted);margin-top:6px;max-width:62ch}
+.pagehead .btn{white-space:nowrap}
+.btn svg{width:16px;height:16px;flex:none}
+.btn.sm svg{width:14px;height:14px}
 .eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:500}
 
 .card{background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:var(--shadow);min-width:0}
@@ -219,6 +222,9 @@ textarea.hand{resize:vertical;background-image:repeating-linear-gradient(transpa
 
 /* tables */
 .tblw{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.clip2,.clip3{display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}.clip2{-webkit-line-clamp:2}.clip3{-webkit-line-clamp:3}
+.tbar{flex-wrap:wrap;gap:10px}.tsearch{max-width:280px}
+.ctypes summary{cursor:pointer;list-style:none;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.ctypes summary::-webkit-details-marker{display:none}
 table{border-collapse:collapse;width:100%;font-size:.92rem}
 th{text-align:left;font-weight:500;color:var(--muted);font-size:.76rem;letter-spacing:.08em;text-transform:uppercase;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--bg)}
 td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
@@ -581,6 +587,10 @@ const MOODS=['','Low','Meh','Okay','Good','Great'];
 /* ---------- schema ---------- */
 const PRI=['Non-negotiable','High','Normal','Low'];
 const AREAS=['Career','Health','Finance','Relationships','Spiritual','Personal'];
+const FUNDING=['Private client','Legal aid','Direct access','Conditional fee (CFA)','Damages-based (DBA)','Insurer funded','Pro bono','Other'];
+const STAGES=['New instructions','Advice','Pre-action','Proceedings issued','Directions','Disclosure and evidence','Pre-trial','Trial or final hearing','Awaiting judgment','Appeal','Settled','Concluded'];
+const DEFAULT_CASE_TYPES=['Family','Children','Financial remedies','Civil','Contract','Tort','Property','Employment','Crime','Public law','Procedure and evidence','Costs'];
+const caseTypes=()=>db.settings.caseTypes||(db.settings.caseTypes=DEFAULT_CASE_TYPES.slice());
 const SCHEMA={
  todos:{name:'to-do',f:[{k:'title',l:'Task',t:'text',req:1,full:1},{k:'priority',l:'Priority',t:'select',o:PRI},{k:'category',l:'Category',t:'ref',ref:'categories',show:'name'},{k:'project',l:'Project',t:'ref',ref:'projects',show:'name'},{k:'planned',l:'Planned for',t:'date'},{k:'due',l:'Due',t:'date'},{k:'notes',l:'Notes',t:'textarea',full:1}]},
  projects:{name:'project',f:[{k:'name',l:'Project name',t:'text',req:1,full:1},{k:'status',l:'Status',t:'select',o:['Not started','In progress','On hold','Done']},{k:'area',l:'Area',t:'select',o:['Work','Personal','Content','Home','Health','Finance']},{k:'due',l:'Due',t:'date'},{k:'description',l:'Description',t:'textarea',full:1}]},
@@ -600,7 +610,8 @@ const SCHEMA={
  restaurants:{name:'restaurant',f:[{k:'name',l:'Restaurant',t:'text',req:1,full:1},{k:'cuisine',l:'Cuisine',t:'text'},{k:'area',l:'Area',t:'text'},{k:'price',l:'Price',t:'select',o:['£','££','£££','££££']},{k:'status',l:'Status',t:'select',o:['Want to try','Been','Favourite']},{k:'rating',l:'Rating',t:'rating'},{k:'notes',l:'What to order',t:'text',full:1}]},
  dates:{name:'date idea',f:[{k:'idea',l:'Date idea',t:'text',req:1,full:1},{k:'date',l:'Date',t:'date'},{k:'status',l:'Status',t:'select',o:['Idea','Planned','Done']},{k:'cost',l:'Rough cost',t:'money'},{k:'notes',l:'Notes',t:'textarea',full:1}]},
  hearings:{name:'hearing',f:[{k:'matter',l:'Matter',t:'ref',ref:'matters',show:'name',req:1,full:1},{k:'type',l:'Type of hearing',t:'select',o:['Trial','Final hearing','Directions','CMC','Mention','FHDRA','DRA','Interim application','Appeal','Conference','Other']},{k:'status',l:'Status',t:'select',o:['Listed','Warned','Adjourned','Vacated','Done']},{k:'date',l:'Date',t:'date',req:1},{k:'time',l:'Time',t:'time'},{k:'length',l:'Time estimate',t:'select',o:['1 hour','2 hours','Half day','Full day']},{k:'until',l:'Runs until (multi-day)',t:'date'},{k:'court',l:'Court',t:'text'},{k:'room',l:'Courtroom',t:'text'},{k:'judge',l:'Judge',t:'text'},{k:'papersDue',l:'Papers due',t:'date'},{k:'skeletonDue',l:'Skeleton due',t:'date'},{k:'notes',l:'Notes (parties, what to bring, dial-in)',t:'textarea',full:1}]},
- matters:{name:'matter',f:[{k:'name',l:'Matter / case name',t:'text',req:1,full:1},{k:'solicitor',l:'Instructing solicitor',t:'text',full:1},{k:'court',l:'Court',t:'text'},{k:'ref',l:'Case reference',t:'text'}]},
+ matters:{name:'matter',f:[{k:'name',l:'Matter name',t:'text',req:1,full:1},{k:'summary',l:'Summary of case',t:'textarea',full:1},{k:'instructed',l:'Instructions date',t:'date'},{k:'solicitor',l:'Instructed by',t:'text'},{k:'funding',l:'Funding type',t:'select',o:FUNDING},{k:'stage',l:'Current stage',t:'select',o:STAGES},{k:'court',l:'Court',t:'text'},{k:'ref',l:'Case reference',t:'text'}]},
+ cases:{name:'case',f:[{k:'name',l:'Case name',t:'text',req:1,full:1},{k:'citation',l:'Citation',t:'text'},{k:'type',l:'Case type',t:'select',o:()=>caseTypes()},{k:'court',l:'Court',t:'text'},{k:'year',l:'Year',t:'text'},{k:'summary',l:'My summary',t:'textarea',full:1},{k:'file',l:'Judgment (PDF or Word)',t:'file',full:1},{k:'link',l:'Link (e.g. BAILII or Westlaw)',t:'text',full:1}]},
  work:{name:'piece of work',f:[{k:'date',l:'Date',t:'date',req:1},{k:'matter',l:'Matter',t:'ref',ref:'matters',show:'name',req:1},{k:'work',l:'Work done',t:'textarea',req:1,full:1},{k:'basis',l:'Fee basis',t:'select',o:['Hourly','Brief fee','Refresher','Fixed fee']},{k:'hours',l:'Hours',t:'number',step:'0.1'},{k:'rate',l:'Hourly rate',t:'money'},{k:'amount',l:'Fee (blank = hours × rate)',t:'money'},{k:'status',l:'Status',t:'select',o:['Unbilled','Invoiced','Paid']},{k:'feeNote',l:'Fee note no.',t:'text'}]},
  fees:{name:'fee note',f:[{k:'number',l:'Fee note / invoice no.',t:'text',req:1},{k:'matter',l:'Matter',t:'ref',ref:'matters',show:'name'},{k:'solicitor',l:'Sent to',t:'text'},{k:'sent',l:'Date sent',t:'date'},{k:'amount',l:'Amount',t:'money',req:1},{k:'paid',l:'Amount paid',t:'money'},{k:'status',l:'Status',t:'select',o:['Outstanding','Part paid','Paid','Written off']},{k:'file',l:'Upload the invoice (PDF or image)',t:'file',full:1},{k:'notes',l:'Notes',t:'text',full:1}]},
  sabha:{name:'sabha note',f:[{k:'date',l:'Date',t:'date',req:1},{k:'title',l:'Title',t:'text',req:1},{k:'speaker',l:'Speaker',t:'text'},{k:'place',l:'Mandir / place',t:'text'},{k:'tags',l:'Tags (comma separated)',t:'tags',full:1},{k:'notes',l:'Notes',t:'textarea',full:1,big:1}]},
@@ -1203,6 +1214,7 @@ function seed(){
    {id:uid(),date:addDays(t,-3),matter:m2,work:'Conference with client and solicitor',basis:'Hourly',hours:1.5,rate:150,status:'Unbilled',ex},
    {id:uid(),date:addDays(t,-42),matter:m1,work:'Advice on merits',basis:'Hourly',hours:3,rate:150,status:'Invoiced',feeNote:'FN-014',ex},
    {id:uid(),date:addDays(t,-120),matter:m2,work:'First hearing',basis:'Brief fee',amount:900,status:'Invoiced',feeNote:'FN-011',ex}],
+  cases:[],
   fees:[
    {id:uid(),number:'FN-014',matter:m1,solicitor:'Example & Co LLP',sent:addDays(t,-40),amount:450,status:'Outstanding',ex},
    {id:uid(),number:'FN-011',matter:m2,solicitor:'Sample Law',sent:addDays(t,-110),amount:900,status:'Outstanding',ex},
@@ -1228,8 +1240,8 @@ function setPath(path,val){const ks=path.split('.');let o=db;for(let i=0;i<ks.le
 function getPath(path){return path.split('.').reduce((o,k)=>o==null?undefined:o[k],db)}
 
 /* ---------- ui state ---------- */
-const S={view:'home',sub:{planning:'day',growth:'habits',health:'plan',finance:'overview',org:'calendar',bar:'diary',sat:'hindu'},date:today(),week:monday(today()),month:ymOf(today()),year:today().slice(0,4),homeTab:'planned',shut:{},f:{todo:'open',tag:'',q:'',txMonth:ymOf(today()),proj:null,rest:'All',seva:'Open',wl:'All',hd:'Upcoming'},calMonth:ymOf(today()),hMonth:ymOf(today()),moodYear:today().slice(0,4)};
-const NAV=[['home','Home'],['planning','Planning'],['projects','Projects & to-dos'],['growth','Personal growth'],['health','Health & fitness'],['shop','Shopping list'],['finance','Finance'],['org','Organisation'],['bar','Barrister billing'],['sat','Satsang'],['settings','Settings']];
+const S={view:'home',sub:{planning:'day',growth:'habits',health:'plan',finance:'overview',org:'calendar',bar:'matters',sat:'hindu'},date:today(),week:monday(today()),month:ymOf(today()),year:today().slice(0,4),homeTab:'planned',shut:{},f:{todo:'open',tag:'',q:'',txMonth:ymOf(today()),proj:null,rest:'All',seva:'Open',wl:'All',hd:'Upcoming'},calMonth:ymOf(today()),hMonth:ymOf(today()),moodYear:today().slice(0,4)};
+const NAV=[['home','Home'],['planning','Planning'],['projects','Projects & to-dos'],['growth','Personal growth'],['health','Health & fitness'],['shop','Shopping list'],['finance','Finance'],['org','Organisation'],['bar','Legal tracker'],['sat','Satsang'],['settings','Settings']];
 const NICON={home:'home',planning:'plan',projects:'proj',growth:'growth',health:'health',shop:'cart',finance:'fin',org:'org',bar:'bar',sat:'sat',settings:'set'};
 
 /* ---------- small components ---------- */
@@ -1242,7 +1254,7 @@ const head=(title,sub,right='')=>`<div class="pagehead"><div><h1>${title}</h1>${
 const stars=n=>n?'★'.repeat(n)+'<span class="muted">'+'★'.repeat(5-n)+'</span>':'';
 const exBanner=()=>db.examples?`<div class="exnote"><span>This planner opens with example entries marked “example” so you can see how everything works.</span><button class="btn sm" data-act="clearEx">Remove all examples</button></div>`:'';
 function table(col,rows,cols,empty){if(!rows.length)return `<div class="empty">${empty}</div>`;
- return `<div class="tblw"><table><thead><tr>${cols.map(c=>`<th class="${c.r?'r':''}">${c.l}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr data-act="edit" data-col="${col}" data-id="${r.id}">${cols.map(c=>`<td class="${c.r?'r':''} ${c.t?'t':''}">${c.f?c.f(r):esc(r[c.k])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+ return `<div class="tblw"><table><thead><tr>${cols.map(c=>`<th class="${c.r?'r':''}">${c.l}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr data-act="edit" data-col="${col}" data-id="${r.id}">${cols.map(c=>`<td class="${c.r?'r':''} ${c.t?'t':''}"${c.w?` style="min-width:22ch;max-width:${c.w}"`:''}>${c.f?c.f(r):esc(r[c.k]||'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
 const navBar=(act,label)=>`<div class="row"><button class="iconbtn" data-act="${act}" data-n="-1" aria-label="Previous">${ic('left')}</button><h2 style="min-width:0">${label}</h2><button class="iconbtn" data-act="${act}" data-n="1" aria-label="Next">${ic('right')}</button><button class="btn sm" data-act="${act}" data-n="0">Today</button></div>`;
 /* moving unfinished things on: "today" items go to tomorrow; on a future day in the planner, to the next day */
 const moveTarget=from=>from<today()?today():addDays(from,1);
@@ -1697,15 +1709,19 @@ function oDates(){const cols=['Idea','Planned','Done'];
  <div class="board" style="grid-template-columns:repeat(3,minmax(220px,1fr))">${cols.map(c=>{const it=db.dates.filter(d=>(d.status||'Idea')===c);return `<div class="col"><div class="cardhead">${sp(c)}<span class="muted small num">${it.length}</span></div>${it.map(d=>`<button class="ic" data-act="edit" data-col="dates" data-id="${d.id}"><span class="t">${esc(d.idea)}</span><span class="row">${d.date?pill(fShort(d.date),'plain'):''}${d.cost?pill('~'+money0(d.cost),'plain'):''}</span>${d.notes?`<span class="x">${esc(d.notes)}</span>`:''}</button>`).join('')}</div>`}).join('')}</div>`}
 
 /* ---------- BARRISTER BILLING ---------- */
-function vBar(){const s=S.sub.bar,t=today(),ty=taxYearStart();
+function vBar(){const s=['matters','cases','log','fees'].includes(S.sub.bar)?S.sub.bar:'matters',t=today(),ty=taxYearStart();
  const unbilled=sum(db.work.filter(w=>w.status==='Unbilled'),wAmount);
  const open=db.fees.filter(feeOpen);const outstanding=sum(open,f=>(+f.amount||0)-(+f.paid||0));
  const aged=open.filter(f=>f.sent&&diffDays(f.sent,t)>90);const agedAmt=sum(aged,f=>(+f.amount||0)-(+f.paid||0));
  const paidTY=sum(db.fees.filter(f=>(f.status==='Paid'||f.status==='Part paid')&&(f.paidOn||f.sent||'')>=ty),f=>f.paid||(f.status==='Paid'?f.amount:0));
  const hrs=sum(db.work.filter(w=>w.date>=ty),w=>w.hours);
- return head('Barrister billing','Log every piece of work, upload fee notes, and see what is owed.',`${addBtn('work','Log work',{date:t,basis:'Hourly',rate:db.settings.rate,status:'Unbilled'})}<button class="btn" data-act="add" data-col="fees" data-preset='${esc(JSON.stringify({sent:t,status:'Outstanding'}))}'>${ic('file')}Upload fee note</button>${addBtn('matters','New matter')}`)+timerCard()+
- (s==='diary'?'':`<div class="grid4"><div class="stat"><span class="l">Unbilled work</span><span class="v">${money0(unbilled)}</span><span class="s num">${db.work.filter(w=>w.status==='Unbilled').length} items to invoice</span></div><div class="stat"><span class="l">Outstanding fees</span><span class="v">${money0(outstanding)}</span><span class="s num">${open.length} fee notes</span></div><div class="stat ${aged.length?'warn':''}"><span class="l">Over 90 days</span><span class="v">${money0(agedAmt)}</span><span class="s num">${aged.length} to chase</span></div><div class="stat"><span class="l">Received this tax year</span><span class="v">${money0(paidTY)}</span><span class="s num">Since ${fFull(ty)} · ${hrs.toFixed(1)} hrs logged</span></div></div>`)+
- tabs('bar',[['diary','Court diary'],['log','Work log'],['fees','Fee notes & invoices'],['matters','Matters']])+({diary:bDiary,log:bLog,fees:bFees,matters:bMatters}[s])()}
+ const acts={matters:addBtn('matters','New matter',{instructed:t,stage:'New instructions'}),
+  cases:`<label class="btn" style="cursor:pointer">${ic('file')}Upload judgments<input type="file" id="caseup" data-upload="cases" multiple accept="application/pdf,.doc,.docx,image/*" hidden></label>${addBtn('cases','Add a case',{type:S.f.ct||''})}`,
+  log:addBtn('work','Log work',{date:t,basis:'Hourly',rate:db.settings.rate,status:'Unbilled'}),
+  fees:`<button class="btn primary" data-act="add" data-col="fees" data-preset='${esc(JSON.stringify({sent:t,status:'Outstanding'}))}'>${ic('file')}Upload fee note</button>`}[s];
+ return head('Legal tracker','Your matters, case law, work and fees in one place.',acts)+timerCard()+
+ (s==='log'||s==='fees'?`<div class="grid4"><div class="stat"><span class="l">Unbilled work</span><span class="v">${money0(unbilled)}</span><span class="s num">${db.work.filter(w=>w.status==='Unbilled').length} items to invoice</span></div><div class="stat"><span class="l">Outstanding fees</span><span class="v">${money0(outstanding)}</span><span class="s num">${open.length} fee notes</span></div><div class="stat ${aged.length?'warn':''}"><span class="l">Over 90 days</span><span class="v">${money0(agedAmt)}</span><span class="s num">${aged.length} to chase</span></div><div class="stat"><span class="l">Received this tax year</span><span class="v">${money0(paidTY)}</span><span class="s num">Since ${fFull(ty)} · ${hrs.toFixed(1)} hrs logged</span></div></div>`:'')+
+ tabs('bar',[['matters','Matters'],['cases','Case law'],['log','Work log'],['fees','Fee notes & invoices']])+({log:bLog,fees:bFees,matters:bMatters,cases:bCases}[s])()}
 const hLive=h=>h.status!=='Vacated'&&h.status!=='Adjourned';
 const hEnd=h=>h.until&&h.until>h.date?h.until:h.date;
 const hName=h=>nameOf('matters',h.matter)||'Hearing';
@@ -1733,7 +1749,22 @@ function bLog(){const f=S.f.wl;const rows=db.work.filter(w=>f==='All'||w.status=
  ${table('work',rows,[{l:'Date',f:w=>fShort(w.date)},{l:'Matter',t:1,f:w=>esc(nameOf('matters',w.matter))},{l:'Work done',f:w=>`<span style="display:block;max-width:40ch">${esc(w.work)}</span>`},{l:'Basis',k:'basis'},{l:'Hours',r:1,f:w=>w.hours?(+w.hours).toFixed(1):''},{l:'Status',f:w=>sp(w.status)+(w.feeNote?` <span class="muted small">${esc(w.feeNote)}</span>`:'')},{l:'Fee',r:1,f:w=>money(wAmount(w))}],'No work logged yet.')}`}
 function bFees(){const t=today();const rows=db.fees.slice().sort((a,b)=>(a.sent||'')<(b.sent||'')?1:-1);
  return table('fees',rows,[{l:'No.',t:1,k:'number'},{l:'Matter',f:x=>esc(nameOf('matters',x.matter))},{l:'Sent to',k:'solicitor'},{l:'Sent',f:x=>fShort(x.sent)},{l:'Age',r:1,f:x=>feeOpen(x)&&x.sent?`<span style="color:${diffDays(x.sent,t)>90?'var(--rust)':'inherit'}">${diffDays(x.sent,t)} days</span>`:''},{l:'Status',f:x=>sp(x.status)},{l:'Invoice',f:x=>x.file?`<button class="btn sm" data-act="viewFile" data-f="${x.file.id}">${ic('file')}View</button>`:'<span class="muted small">Not uploaded</span>'},{l:'Amount',r:1,f:x=>money(x.amount)+(x.status==='Part paid'&&x.paid?`<br><span class="muted small">${money(x.paid)} paid</span>`:'')}],'No fee notes yet. Upload your first one.')}
-function bMatters(){return `<div class="cardhead"><p class="muted">Each case or instruction you bill against.</p>${addBtn('matters','New matter')}</div><input class="field" data-add="matter" placeholder="Quick add: type a matter name and press Enter" style="margin:12px 0">`+table('matters',db.matters,[{l:'Matter',t:1,k:'name'},{l:'Instructing solicitor',k:'solicitor'},{l:'Court',k:'court'},{l:'Ref',k:'ref'},{l:'Work items',r:1,f:m=>db.work.filter(w=>w.matter===m.id).length},{l:'Total fees',r:1,f:m=>money(sum(db.work.filter(w=>w.matter===m.id),wAmount))}],'No matters yet.')}
+const clip=(v,n)=>v?`<span class="clip${n||2}">${esc(v)}</span>`:'<span class="muted small">Add</span>';
+const searchBox=(k,ph)=>`<input class="field tsearch" id="srch_${k}" data-filter="${k}" value="${esc(S.f[k]||'')}" placeholder="${ph}" type="search">`;
+const hit=(q,...xs)=>!q||xs.join(' ').toLowerCase().includes(q.toLowerCase());
+const closedStage=m=>m.stage==='Settled'||m.stage==='Concluded';
+function bMatters(){const f=S.f.ms||'Open',q=S.f.mq||'';
+ const rows=db.matters.filter(m=>(f==='All'||(f==='Open'?!closedStage(m):closedStage(m)))&&hit(q,m.name,m.summary,m.solicitor,m.funding,m.stage,m.court,m.ref)).sort((a,b)=>(b.instructed||'')<(a.instructed||'')?-1:(b.instructed||'')>(a.instructed||'')?1:(a.name||'').localeCompare(b.name||''));
+ return `<div class="cardhead tbar"><div class="row">${['Open','Closed','All'].map(o=>`<button class="chip ${f===o?'on':''}" data-act="filt" data-k="ms" data-v="${o}">${o}</button>`).join('')}</div>${searchBox('mq','Search matters')}</div>
+ <input class="field" data-add="matter" placeholder="Quick add: type a matter name and press Enter" style="margin:12px 0">`+table('matters',rows,[{l:'Matter name',t:1,k:'name'},{l:'Summary of case',f:m=>clip(m.summary,2),w:'34ch'},{l:'Instructions date',f:m=>m.instructed?fShort(m.instructed)+' '+m.instructed.slice(0,4):''},{l:'Instructed by',k:'solicitor'},{l:'Funding type',f:m=>m.funding?sp(m.funding):''},{l:'Current stage',f:m=>m.stage?pill(m.stage,closedStage(m)?'plain':''):''}],q||f!=='All'?'No matters match.':'No matters yet.')}
+function bCases(){const ty=S.f.ct||'',q=S.f.cq||'';const types=caseTypes();
+ const rows=db.cases.filter(c=>(!ty||c.type===ty)&&hit(q,c.name,c.citation,c.type,c.court,c.year,c.summary)).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+ const count=t=>db.cases.filter(c=>c.type===t).length;
+ return `<div class="cardhead tbar"><div class="row" style="flex-wrap:wrap;gap:6px"><button class="chip ${!ty?'on':''}" data-act="filt" data-k="ct" data-v="">All <span class="num muted">${db.cases.length}</span></button>${types.map(t=>`<button class="chip ${ty===t?'on':''}" data-act="filt" data-k="ct" data-v="${esc(t)}">${esc(t)}${count(t)?` <span class="num muted">${count(t)}</span>`:''}</button>`).join('')}${db.cases.some(c=>!c.type)?`<button class="chip ${ty==='__none'?'on':''}" data-act="filt" data-k="ct" data-v="__none">No type yet</button>`:''}</div>${searchBox('cq','Search cases and summaries')}</div>
+ <div style="margin-top:12px">${table('cases',ty==='__none'?db.cases.filter(c=>!c.type&&hit(q,c.name,c.citation,c.summary)):rows,[{l:'Case',t:1,f:c=>esc(c.name)+(c.year?` <span class="muted small num">(${esc(c.year)})</span>`:'')},{l:'Citation',f:c=>c.citation?`<span class="num">${esc(c.citation)}</span>`:''},{l:'Case type',f:c=>c.type?sp(c.type):pill('Add a type','clay')},{l:'Court',k:'court'},{l:'My summary',f:c=>clip(c.summary,3),w:'44ch'},{l:'Judgment',f:c=>(c.file?`<button class="btn sm" data-act="viewFile" data-f="${c.file.id}">${ic('file')}Open</button>`:'')+(c.link?` <a class="btn sm ghost" href="${esc(/^https?:\/\//.test(c.link)?c.link:'https://'+c.link)}" target="_blank" rel="noopener" data-noedit="1">Link</a>`:'')||'<span class="muted small">None</span>'}],q||ty?'No cases match.':'No cases yet. Upload judgments or add a case, then give each a type and your own summary.')}</div>
+ <details class="card ctypes" style="margin-top:16px" ${S.f.ctOpen?'open':''}><summary><b>Case types</b> <span class="muted small">Add or remove the categories you use</span></summary>
+  <div class="chips" style="margin:12px 0">${types.map((t,i)=>`<span class="chip usual"><span>${esc(t)}</span><button class="ux" data-act="ctDel" data-i="${i}" aria-label="Remove ${esc(t)}">×</button></span>`).join('')}</div>
+  <input class="field" data-add="caseType" placeholder="Add a case type and press Enter" style="max-width:340px"></details>`}
 
 /* ---------- SATSANG ---------- */
 function vSat(){const s=S.sub.sat;
@@ -1882,6 +1913,7 @@ const A={
  extDel:async e=>{if(!e.classList.contains('sure')){e.classList.add('sure');e.textContent='Tap again to delete';return}
   const x=EXT[MODAL&&MODAL.ek];if(!x)return;try{await calApi(`/calendars/${encodeURIComponent(x.calId)}/events/${encodeURIComponent(x.id)}?sendUpdates=none`,{method:'DELETE'});closeModal();C.extAt={};toast('Deleted from your calendar');refreshView()}catch(err){toast('Google could not delete that. Try again in a moment.')}},
  extInfo:e=>toast(`${e.dataset.t} · ${e.dataset.w}${e.dataset.c?' · '+e.dataset.c:''}. Change it in Apple or Google Calendar.`),
+ ctDel:e=>{S.f.ctOpen=true;const t=caseTypes();const name=t[+e.dataset.i];if(db.cases.some(c=>c.type===name)&&!e.classList.contains('sure')){e.classList.add('sure');toast(`Some cases use ${name}. Tap × again to remove it anyway (the cases keep their type).`);return}t.splice(+e.dataset.i,1);save();render()},
  moveTodo:e=>{const t=byId('todos',e.dataset.id);if(!t)return;const to=moveTarget(e.dataset.from||today());snapUndo();const due=moveTodoTo(t,to);save();render();toast(`Moved to ${dayWord(to)}${due?', due date too':''}`,true)},
  dayMove:e=>{const d=e.dataset.d,to=moveTarget(d);snapUndo();const w=moveDayLine(d,e.dataset.k,+e.dataset.i,to);if(!w)return;save();render();toast(`Moved to ${dayWord(to)}'s ${w}`,true)},
  moveAll:e=>{const r=moveAllFrom(e.dataset.from||today());if(!r.n){toast('Nothing left to move');return}save();render();toast(`Moved ${r.n} to ${dayWord(r.to)}${r.due?` (${r.due} due date${r.due===1?'':'s'} too)`:''}`,true)},
@@ -1931,6 +1963,7 @@ const A={
  wipe:e=>{if(e.dataset.sure){db=seed();db.examples=false;for(const k in db){if(Array.isArray(db[k]))db[k]=db[k].filter(x=>!x.ex)}db.habitLog={};db.days={};db.months={};db.years={};db.fitPlan={};save();render();toast('Erased')}else{e.dataset.sure=1;e.textContent='Tap again to erase everything'}}
 };
 const ADD={
+ caseType:v=>{S.f.ctOpen=true;const t=caseTypes();const n=v.trim();if(!n)return;if(t.some(x=>x.toLowerCase()===n.toLowerCase())){toast('Already there');return}t.push(n)},
  shop:v=>{const n=addShop(v,'');if(!n)toast('Already on your list')},
  matter:v=>db.matters.push({id:'m_'+uid(),name:v}),
  dayTodo:(v)=>db.todos.push({id:uid(),title:v,priority:'Normal',planned:S.date}),
@@ -1939,7 +1972,7 @@ const ADD={
  yearGoal:(v,el)=>Y(S.year).goals.push({id:uid(),area:el.dataset.area,t:v,done:false})
 };
 
-document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el)return;const fn=A[el.dataset.act];if(!fn)return;
+document.addEventListener('click',ev=>{if(ev.target.closest&&ev.target.closest('a[href]'))return;const el=ev.target.closest('[data-act]');if(!el)return;const fn=A[el.dataset.act];if(!fn)return;
  if(el.classList.contains('scrim')&&ev.target!==el)return;
  if(el.tagName==='INPUT'&&el.type==='checkbox'){fn(el,ev);return}
  ev.preventDefault();fn(el,ev)});
@@ -1953,6 +1986,10 @@ document.addEventListener('change',ev=>{const t=ev.target;if(!t.dataset.bind)ret
  else if(t.dataset.bind.startsWith('settings.'))render()});
 document.addEventListener('submit',ev=>{if(ev.target.id==='mform'){ev.preventDefault();submitForm()}else if(ev.target.id==='sform'){ev.preventDefault();saveSlot()}else if(ev.target.id==='xform'){ev.preventDefault();saveExt()}});
 document.addEventListener('change',ev=>{if(ev.target.id==='x_all'){['x_start','x_dur'].forEach(id=>{const el=document.getElementById(id);if(el)el.disabled=ev.target.checked})}});
+document.addEventListener('change',async ev=>{const el=ev.target;if(!el||el.dataset.upload!=='cases'||!el.files||!el.files.length)return;
+ const fs=[...el.files],ty=S.f.ct&&S.f.ct!=='__none'?S.f.ct:'';toast(`Adding ${fs.length} case${fs.length===1?'':'s'}…`);
+ for(const f of fs){const file=await putFile(f);const name=f.name.replace(/\.[a-z0-9]+$/i,'').replace(/[_]+/g,' ').trim();db.cases.push({id:uid(),name,type:ty,file,citation:'',summary:''})}
+ save();render();toast(`Added ${fs.length} case${fs.length===1?'':'s'}. Tap each one to add its type and your summary.`)});
 document.addEventListener('dblclick',ev=>{const c=ev.target.closest&&ev.target.closest('.mc[data-v]');if(c){S.sub.planning='day';S.date=c.dataset.v;render()}});
 document.addEventListener('click',ev=>{const c=ev.target.closest&&ev.target.closest('.tlc');if(!c||ev.target.closest('[data-act]'))return;const r=c.getBoundingClientRect();const y=ev.clientY-r.top;const n=Math.max(0,Math.min(24*60-15,Math.floor(y/HH*60/15)*15));openSlot(c.dataset.tl,null,n)});
 setInterval(()=>{const n=new Date(),m=n.getHours()*60+n.getMinutes();document.querySelectorAll('.tlnow,.nowl').forEach(el=>{el.style.top=(m/60*HH)+'px';if(el.classList.contains('nowl'))el.textContent=pad(n.getHours())+':'+pad(n.getMinutes())})},30000);
