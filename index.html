@@ -1241,7 +1241,7 @@ function getPath(path){return path.split('.').reduce((o,k)=>o==null?undefined:o[
 
 /* ---------- ui state ---------- */
 const S={view:'home',sub:{planning:'day',growth:'habits',health:'plan',finance:'overview',org:'calendar',bar:'matters',sat:'hindu'},date:today(),week:monday(today()),month:ymOf(today()),year:today().slice(0,4),homeTab:'planned',shut:{},f:{todo:'open',tag:'',q:'',txMonth:ymOf(today()),proj:null,rest:'All',seva:'Open',wl:'All',hd:'Upcoming'},calMonth:ymOf(today()),hMonth:ymOf(today()),moodYear:today().slice(0,4)};
-const NAV=[['home','Home'],['planning','Planning'],['projects','Projects & to-dos'],['growth','Personal growth'],['health','Health & fitness'],['shop','Shopping list'],['finance','Finance'],['org','Organisation'],['bar','Legal tracker'],['sat','Satsang'],['settings','Settings']];
+const NAV=[['home','Home'],['planning','Planning'],['projects','Projects & to-dos'],['bar','Legal tracker'],['growth','Personal growth'],['health','Health & fitness'],['shop','Shopping list'],['finance','Finance'],['org','Organisation'],['sat','Satsang'],['settings','Settings']];
 const NICON={home:'home',planning:'plan',projects:'proj',growth:'growth',health:'health',shop:'cart',finance:'fin',org:'org',bar:'bar',sat:'sat',settings:'set'};
 
 /* ---------- small components ---------- */
